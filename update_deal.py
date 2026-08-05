@@ -294,9 +294,9 @@ def invia_notifica_push(offerte_nuove):
 
     try:
         risposta = requests.post(
-            "https://onesignal.com/api/v1/notifications",
+            "https://api.onesignal.com/notifications",
             headers={
-                "Authorization": f"Basic {ONESIGNAL_REST_API_KEY}",
+                "Authorization": f"Key {ONESIGNAL_REST_API_KEY}",
                 "Content-Type": "application/json; charset=utf-8",
             },
             json=corpo_richiesta,
