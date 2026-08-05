@@ -503,6 +503,37 @@
     outline-offset:2px;
   }
   .search-form .btn{flex:0 0 auto;}
+  .search-discount-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:14px;
+    font-size:0.83rem;
+    color:var(--text-dim);
+  }
+  .search-discount-row strong{color:var(--amber);}
+  .search-discount-row input[type="range"]{flex:1; accent-color:var(--amber);}
+  .search-results{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+    gap:14px;
+    margin-top:18px;
+  }
+  .search-results:empty{display:none;}
+  .search-result-card{
+    background:var(--cream);
+    color:var(--navy-900);
+    border-radius:var(--radius-sm);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    text-decoration:none;
+  }
+  .search-result-card img{width:100%; aspect-ratio:1/1; object-fit:contain; background:#fff;}
+  .search-result-card .src-body{padding:12px 14px 14px;}
+  .search-result-card .src-title{font-size:0.8rem; font-weight:700; margin:0 0 6px; line-height:1.25;}
+  .search-result-card .src-price{font-family:"Space Grotesk", sans-serif; font-weight:700; color:var(--coral); font-size:1rem;}
+  .search-result-card .src-old{text-decoration:line-through; color:#93a0b2; font-size:0.78rem; margin-right:6px;}
   .search-note{
     margin:12px 0 0;
     font-size:0.74rem;
@@ -569,7 +600,12 @@
         <input type="text" id="search-input" placeholder="Es. friggitrice ad aria, robot lavapavimenti…" aria-label="Cosa cerchi">
         <button class="btn btn-primary" type="submit">Cerca su Amazon</button>
       </form>
-      <p class="search-note">Apre una ricerca Amazon standard in una nuova scheda, con il nostro codice di affiliazione già incluso.</p>
+      <div class="search-discount-row">
+        <label for="search-sconto">Sconto minimo: <strong id="search-sconto-val">0%</strong></label>
+        <input type="range" id="search-sconto" min="0" max="70" step="5" value="0">
+      </div>
+      <div class="search-results" id="search-results"></div>
+      <p class="search-note" id="search-note">Apre una ricerca Amazon standard in una nuova scheda, con il nostro codice di affiliazione già incluso.</p>
     </section>
 
     <div class="deals-grid" id="deals-grid">
@@ -760,15 +796,8 @@ if ('serviceWorker' in navigator) {
 // Richiede un App ID gratuito da onesignal.com: senza, il pulsante resta
 // visibile ma avvisa che le notifiche non sono ancora configurate.
 (function () {
-  var ONESIGNAL_APP_ID = 'ONESIGNAL_APP_ID_QUI';
+  var ONESIGNAL_APP_ID = '75ba7be8-51e2-446c-b6c3-742effa95386';
   var btnNotify = document.getElementById('btn-notify');
-
-  if (ONESIGNAL_APP_ID === 'ONESIGNAL_APP_ID_QUI') {
-    btnNotify.addEventListener('click', function () {
-      alert('Le notifiche push non sono ancora configurate su questo sito (manca l\'App ID OneSignal).');
-    });
-    return;
-  }
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(function (OneSignal) {
@@ -789,13 +818,22 @@ if ('serviceWorker' in navigator) {
   });
 })();
 
-// ---------- Tool di ricerca Amazon (con tag di affiliazione) ----------
+// ---------- Tool di ricerca Amazon (catalogo reale + fallback) ----------
 (function () {
   var TAG_AFFILIAZIONE = 'infra0ac-21';
   var chips = document.querySelectorAll('.search-chip');
   var form = document.getElementById('search-form');
   var input = document.getElementById('search-input');
+  var sliderSconto = document.getElementById('search-sconto');
+  var sconteLabel = document.getElementById('search-sconto-val');
+  var risultatiBox = document.getElementById('search-results');
+  var noteBox = document.getElementById('search-note');
   var categoriaAttiva = '';
+  var catalogo = null; // caricato da amazon_catalog.json, se disponibile
+
+  sliderSconto.addEventListener('input', function () {
+    sconteLabel.textContent = sliderSconto.value + '%';
+  });
 
   chips.forEach(function (chip) {
     chip.addEventListener('click', function () {
@@ -805,12 +843,79 @@ if ('serviceWorker' in navigator) {
     });
   });
 
+  fetch('amazon_catalog.json', { cache: 'no-store' })
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (dati) {
+      if (dati && dati.categorie && Object.keys(dati.categorie).some(function (k) { return dati.categorie[k].length; })) {
+        catalogo = dati;
+        noteBox.textContent = 'Catalogo interno, aggiornato l\'ultima volta il ' + (dati.ultimo_aggiornamento || '—') + '. Include prezzo, sconto reale e link diretto.';
+      }
+    })
+    .catch(function () { /* nessun catalogo: si usa il fallback su Amazon */ });
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  function estraiSconto(sconto) {
+    var n = parseInt((sconto || '').replace('%', ''), 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function renderRisultatiLocali(prodotti) {
+    risultatiBox.innerHTML = '';
+    prodotti.forEach(function (p) {
+      var url = p.link_affiliato + (p.link_affiliato.indexOf('?') > -1 ? '&' : '?') + 'tag=' + TAG_AFFILIAZIONE;
+      var card = document.createElement('a');
+      card.className = 'search-result-card';
+      card.href = url;
+      card.target = '_blank';
+      card.rel = 'noopener noreferrer nofollow sponsored';
+      card.innerHTML =
+        (p.immagine_url ? '<img src="' + escapeHtml(p.immagine_url) + '" alt="' + escapeHtml(p.titolo) + '" loading="lazy">' : '') +
+        '<div class="src-body">' +
+          '<p class="src-title">' + escapeHtml(p.titolo) + '</p>' +
+          (p.prezzo_scontato ? '<span>' + (p.prezzo_originale ? '<span class="src-old">' + escapeHtml(p.prezzo_originale) + '</span>' : '') + '<span class="src-price">' + escapeHtml(p.prezzo_scontato) + '</span></span>' : '') +
+        '</div>';
+      risultatiBox.appendChild(card);
+    });
+  }
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    var termine = [input.value.trim(), categoriaAttiva].filter(Boolean).join(' ').trim();
-    if (!termine) termine = 'offerte casa';
-    var url = 'https://www.amazon.it/s?k=' + encodeURIComponent(termine) + '&tag=' + TAG_AFFILIAZIONE;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    var termine = input.value.trim().toLowerCase();
+    var sogliaSconto = parseInt(sliderSconto.value, 10) || 0;
+
+    // Se il catalogo reale e' disponibile, filtriamo localmente: risultati
+    // reali con prezzo e sconto veri, istantanei.
+    if (catalogo) {
+      var chiaviCategorie = categoriaAttiva
+        ? Object.keys(catalogo.categorie).filter(function (k) { return k === categoriaAttiva.split(' ')[0] || categoriaAttiva.indexOf(k) > -1; })
+        : Object.keys(catalogo.categorie);
+
+      var pool = [];
+      chiaviCategorie.forEach(function (k) { pool = pool.concat(catalogo.categorie[k] || []); });
+
+      var filtrati = pool.filter(function (p) {
+        var passaTermine = !termine || p.titolo.toLowerCase().indexOf(termine) > -1;
+        var passaSconto = estraiSconto(p.sconto_percentuale) >= sogliaSconto;
+        return passaTermine && passaSconto;
+      });
+
+      if (filtrati.length) {
+        renderRisultatiLocali(filtrati);
+        return;
+      }
+    }
+
+    // Fallback: nessun catalogo o nessun risultato locale, si apre la
+    // ricerca standard su Amazon con il tag gia' incluso.
+    var termineRicerca = [input.value.trim(), categoriaAttiva].filter(Boolean).join(' ').trim();
+    if (!termineRicerca) termineRicerca = 'offerte casa';
+    var urlAmazon = 'https://www.amazon.it/s?k=' + encodeURIComponent(termineRicerca) + '&tag=' + TAG_AFFILIAZIONE;
+    window.open(urlAmazon, '_blank', 'noopener,noreferrer');
   });
 })();
 </script>
