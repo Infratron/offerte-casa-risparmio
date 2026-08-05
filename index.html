@@ -177,15 +177,31 @@
   .discount-badge{
     position:absolute;
     top:16px; left:16px;
-    background:var(--amber);
-    color:var(--navy-900);
+    background:var(--coral);
+    color:#fff;
     font-family:"Space Grotesk", sans-serif;
     font-weight:700;
     font-size:1.15rem;
-    padding:8px 14px;
+    padding:8px 16px;
     border-radius:100px;
     z-index:3;
     display:none;
+    align-items:center;
+    gap:7px;
+    box-shadow:0 6px 18px -4px rgba(255,107,94,0.6);
+  }
+  .discount-badge .pulse-dot{
+    width:8px;height:8px;
+    border-radius:50%;
+    background:#fff;
+    animation:pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1; transform:scale(1);}
+    50%{opacity:0.4; transform:scale(0.75);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .discount-badge .pulse-dot{animation:none;}
   }
 
   .deal-body{
@@ -291,6 +307,39 @@
     .btn:hover{transform:none;}
   }
 
+  /* ---------- Community CTA banner ---------- */
+  .join-banner{
+    margin-top:36px;
+    padding:26px 30px;
+    border-radius:var(--radius-lg);
+    background:linear-gradient(135deg, var(--navy-800), var(--navy-700));
+    border:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .join-banner-text h2{
+    font-size:1.15rem;
+    margin:0 0 4px;
+  }
+  .join-banner-text p{
+    margin:0;
+    color:var(--text-dim);
+    font-size:0.88rem;
+    max-width:46ch;
+  }
+  .btn-join{
+    background:var(--amber);
+    color:var(--navy-900);
+    white-space:nowrap;
+  }
+  .btn-join:hover{
+    background:var(--amber-dark);
+    transform:translateY(-1px);
+  }
+
   /* ---------- Below the fold ---------- */
   .strip{
     margin:70px 0 40px;
@@ -387,15 +436,15 @@
   </header>
 
   <main id="top">
-    <div class="eyebrow"><span class="dot"></span> Offerta live dal canale Telegram</div>
-    <h1 class="hero-heading">L'offerta di oggi, <em>senza perdere tempo</em> a cercarla</h1>
-    <p class="hero-sub">Ogni giorno selezioniamo un'offerta per la casa e la pubblichiamo qui, sincronizzata in automatico dal nostro canale Telegram.</p>
+    <div class="eyebrow"><span class="dot"></span> Offerta attiva ora — sincronizzata dal canale Telegram</div>
+    <h1 class="hero-heading">L'offerta top di oggi, <em>prima che finisca</em></h1>
+    <p class="hero-sub">Selezioniamo ogni giorno il miglior prezzo per la casa e lo pubblichiamo qui in tempo reale. Compra ora su Amazon, oppure iscriviti gratis per non perderti le prossime.</p>
 
     <article class="deal-card" id="deal-card">
       <div class="deal-media">
         <img id="deal-image" src="" alt="" style="display:none;">
         <span class="placeholder" id="deal-image-placeholder">Caricamento immagine…</span>
-        <span class="discount-badge" id="deal-discount"></span>
+        <span class="discount-badge" id="deal-discount"><span class="pulse-dot"></span><span id="deal-discount-text"></span></span>
       </div>
       <div class="deal-body">
         <h2 class="deal-title" id="deal-title">Caricamento offerta…</h2>
@@ -407,14 +456,24 @@
         <p class="deal-updated" id="deal-updated"></p>
         <div class="cta-row">
           <a class="btn btn-primary" id="deal-cta-amazon" href="#" target="_blank" rel="noopener noreferrer nofollow sponsored">
-            Vai all'offerta su Amazon
+            Approfitta ora su Amazon →
           </a>
-          <a class="btn btn-secondary" id="deal-cta-telegram" href="https://t.me/s/CasaRisparmio" target="_blank" rel="noopener noreferrer">
-            Vedi su Telegram
+          <a class="btn btn-secondary" id="deal-cta-telegram" href="https://t.me/CasaRisparmio" target="_blank" rel="noopener noreferrer">
+            Vedi il post originale
           </a>
         </div>
       </div>
     </article>
+
+    <section class="join-banner">
+      <div class="join-banner-text">
+        <h2>Non aspettare che torniamo qui</h2>
+        <p>Le nuove offerte arrivano prima su Telegram, in tempo reale. Iscriviti gratis: nessuno spam, solo prezzi bassi.</p>
+      </div>
+      <a class="btn btn-join" href="https://t.me/CasaRisparmio" target="_blank" rel="noopener noreferrer">
+        Iscriviti gratis su Telegram
+      </a>
+    </section>
 
     <div class="strip">
       <div class="strip-item"><strong>Aggiornamento automatico</strong>&nbsp;dal canale Telegram</div>
@@ -454,6 +513,7 @@
     image: document.getElementById('deal-image'),
     imagePlaceholder: document.getElementById('deal-image-placeholder'),
     discount: document.getElementById('deal-discount'),
+    discountText: document.getElementById('deal-discount-text'),
     title: document.getElementById('deal-title'),
     text: document.getElementById('deal-text'),
     priceRow: document.getElementById('deal-price-row'),
@@ -489,7 +549,7 @@
     }
 
     if (deal.sconto_percentuale) {
-      els.discount.textContent = '-' + deal.sconto_percentuale.replace('%', '') + '%';
+      els.discountText.textContent = '-' + deal.sconto_percentuale.replace('%', '') + '%';
       els.discount.style.display = 'inline-flex';
     }
 
@@ -522,8 +582,8 @@
     })
     .then(render)
     .catch(function () {
-      els.title.textContent = 'Nessuna offerta disponibile al momento';
-      els.text.textContent = 'Torna a trovarci tra poco, o dai un\'occhiata al canale Telegram per l\'ultimo post pubblicato.';
+      els.title.textContent = 'Stiamo per pubblicare una nuova offerta';
+      els.text.textContent = 'Il prossimo affare sta per arrivare. Iscriviti al canale Telegram per essere avvisato appena esce, o ricarica la pagina tra qualche minuto.';
       els.imagePlaceholder.textContent = '—';
       els.ctaAmazon.style.display = 'none';
     });
