@@ -1,36 +1,46 @@
 name: Aggiorna offerta da Telegram
+
 on:
   schedule:
-    # Ogni 30 minuti. Adatta la cadenza in base a quanto spesso pubblichi.
+    # Ogni 30 minuti
     - cron: "*/30 * * * *"
   workflow_dispatch: {}
+
 permissions:
   contents: write
+
 jobs:
   aggiorna:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+
       - name: Installa dipendenze
         run: pip install requests beautifulsoup4
+
       - name: Esegui lo scraping Telegram
         run: python update_deal.py
         env:
           ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+
       - name: Aggiorna il catalogo Amazon (Creators API)
         run: python amazon_creators.py
         env:
           AMAZON_CREATORS_CLIENT_ID: ${{ secrets.AMAZON_CREATORS_CLIENT_ID }}
           AMAZON_CREATORS_CLIENT_SECRET: ${{ secrets.AMAZON_CREATORS_CLIENT_SECRET }}
+
       - name: Commit dei file aggiornati (solo se cambiati)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           if git diff --quiet -- latest_deal.json amazon_catalog.json; then
             echo "Nessuna modifica: nulla di nuovo da pubblicare."
           else
