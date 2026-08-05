@@ -45,7 +45,7 @@ self.addEventListener('fetch', (event) => {
 
   // Dati delle offerte: sempre provare la rete prima (dati freschi),
   // in caso di errore si torna all'ultima versione salvata in cache.
-  if (url.pathname.endsWith('latest_deal.json')) {
+  if (url.pathname.endsWith('latest_deal.json') || url.pathname.endsWith('amazon_catalog.json')) {
     event.respondWith(
       fetch(event.request)
         .then((risposta) => {
