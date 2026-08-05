@@ -1,40 +1,40 @@
 name: Aggiorna offerta da Telegram
-
 on:
   schedule:
     # Ogni 30 minuti. Adatta la cadenza in base a quanto spesso pubblichi.
     - cron: "*/30 * * * *"
   workflow_dispatch: {}
-
 permissions:
   contents: write
-
 jobs:
   aggiorna:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Installa dipendenze
         run: pip install requests beautifulsoup4
-
-      - name: Esegui lo scraping
+      - name: Esegui lo scraping Telegram
         run: python update_deal.py
-
-      - name: Commit del JSON aggiornato (solo se cambiato)
+        env:
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+      - name: Aggiorna il catalogo Amazon (Creators API)
+        run: python amazon_creators.py
+        env:
+          AMAZON_CREATORS_CLIENT_ID: ${{ secrets.AMAZON_CREATORS_CLIENT_ID }}
+          AMAZON_CREATORS_CLIENT_SECRET: ${{ secrets.AMAZON_CREATORS_CLIENT_SECRET }}
+      - name: Commit dei file aggiornati (solo se cambiati)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- latest_deal.json; then
-            echo "Nessuna modifica: nuovo post non ancora arrivato."
+          if git diff --quiet -- latest_deal.json amazon_catalog.json; then
+            echo "Nessuna modifica: nulla di nuovo da pubblicare."
           else
-            git add latest_deal.json
-            git commit -m "Aggiorna offerta $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git add latest_deal.json amazon_catalog.json
+            git commit -m "Aggiorna offerte $(date -u +'%Y-%m-%d %H:%M UTC')"
             git push
           fi
