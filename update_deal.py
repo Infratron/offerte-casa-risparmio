@@ -28,7 +28,7 @@ URL_SITO = "https://infratron.github.io/offerte-casa-risparmio/"
 # (Settings > Secrets and variables > Actions) e arrivano come variabili
 # d'ambiente. Se mancano, l'invio delle notifiche viene semplicemente
 # saltato: il resto dello script funziona comunque.
-ONESIGNAL_APP_ID = os.environ.get("ONESIGNAL_APP_ID", "")
+ONESIGNAL_APP_ID = "75ba7be8-51e2-446c-b6c3-742effa95386"
 ONESIGNAL_REST_API_KEY = os.environ.get("ONESIGNAL_REST_API_KEY", "")
 
 HEADERS = {
