@@ -1,6 +1,115 @@
 {
-  "offerte": [],
-  "ultimo_aggiornamento": "",
-  "stato": "in_attesa_primo_workflow",
-  "nota": "Il workflow GitHub Actions popola automaticamente le ultime 10 offerte dal canale Telegram."
+    "offerte": [
+        {
+            "etichetta": "",
+            "titolo": "Blink Mini Pan-Tilt Camera | Videocamera intelligente di sicurezza",
+            "immagine_url": "https://cdn4.telesco.pe/file/CR698IQgb6NVcxLjIxgxNYvJw30xwh7FxjJUrJEEEuP01RfN53LwiIj7EL7jyaiIZ_8gYRomF9qB82ryuQZD3z8aiFt9QaYVx7P6GSLvYRd1sCaaD6iobVRjnlleAKQaSp8fefi1YRW7VV66kuwIh1usCNkaGUrXJXVqvFDUhgZeocrnmQ0GHjE5iktN585BiSaXx-1O1SXTjEh24enVWwT-rBEW3qXoIe6J6BcRJfQOjjWxSYJxiGeWL7apc9eVfTzj6GrDef8cJnSMcq1Dpw1DskKwxgoQ9toTDWEjIRISvEFU827RXX-jNLfNQlh2Wnxdlj0N2j8W2JSXwtdmaw.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B09N6P1555/?tag=infra0ac-21&psc=1",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/81",
+            "prezzo_originale": "44,99 €",
+            "prezzo_scontato": "21,99 €",
+            "sconto_percentuale": "51%",
+            "data_pubblicazione": "2026-08-05T13:28:32+00:00"
+        },
+        {
+            "etichetta": "Minimo Storico",
+            "titolo": "MasterChef Utensili Cucina con Mestoli, Spatola",
+            "immagine_url": "https://cdn4.telesco.pe/file/txUebUPtpHUi98x5zrk1ol1rZffODaxUTD8i1G7dDIQQPgaXgHbynbuJ6jZyr7zNw6b5thN6hZH3NUfsA5zsRqPZbfm5V5V3EYOfqkPbWagFtBb1gh1l7THv9wahaXWcQWVe997NBFXyOFLP8RqGAv5vrk5woKI22wkOYuC9K4EbMkFm-SENofmD39j5z5T_lE_R-HjoFT78ulJK46TZ81MzY1riqDZgqHyJHhgavfWsvdSOOVirIJl3FUzQo6RP4wSiUh6fdi1FnVjRb_guqGvXo43iRxLym5JaBqPMNiaNU_p9drailp5mRug6cLNOcmFzbEji2OnimUH4S1gxTA.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B0CL9WR3JG/?tag=infra0ac-21&psc=1",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/80",
+            "prezzo_originale": "19,99 €",
+            "prezzo_scontato": "12,99 €",
+            "sconto_percentuale": "35%",
+            "data_pubblicazione": "2026-08-05T11:09:32+00:00"
+        },
+        {
+            "etichetta": "Minimo Storico",
+            "titolo": "Moulinex Blendeo + Frullatore Elettrico, 450 W",
+            "immagine_url": "https://cdn4.telesco.pe/file/LW0-exM9AbfXrE-BPjMWj0KPoomxwiOAnT2orteu_HNLv78SMN0dY69wyT-csq3sCNFAJLUx5qT502DREHH2wYYR7q07880gYurLSspdKXxOByea4XkTmIe51gXZNhH2zbYlFOPhgk1pE6SOBjWGneDR3LOzmN2-AhitkE9x_stzvxH3b056KGEWhGj8g1osijkEnyGHeQ6ly2Pj996LuDobokqEtJ0GYSP3m4NB2HFFOsseTEtcwnf_VLeD_TCfdeIqS5gpsfgv2YaLp9KDm8Za6QqycQiJYnzCU_yVCdBvDOAtrV2RoovkFD84rH2OkmmEwfio6-J06BH8svloSg.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B08WX64QN4/?tag=infra0ac-21&psc=1&smid=a11il2pnwyju7h",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/79",
+            "prezzo_originale": "49,99 €",
+            "prezzo_scontato": "24,90 €",
+            "sconto_percentuale": "50%",
+            "data_pubblicazione": "2026-08-05T10:28:06+00:00"
+        },
+        {
+            "etichetta": "",
+            "titolo": "FAMIVAC FV3 Aspirapolvere senza Fili 60KPa/50Min/120㎡, Tubo Pieghevole",
+            "immagine_url": "https://cdn4.telesco.pe/file/Q1kLpVXdWFlnqUCgi94bxzDvj4yAN2sEhcQtjgMWtMSK72kOCz89rttmBmf3X6P2hK1poqtfDGba8-xAp1qd5UNNEgAK_n8A2IbXKjCFGYDLnSLtlo9zN5F2h1NDi5M9yx8HLkNarefILCStn9-Pcg-fq9JSy_FNmvQd2KHUaxwRGfcn5L6B02O-K0ypd9FjL6o1AXTLVk_sQ1ZJOn2sEij_S3T29Tmz6QaEh16DuwBhLfrfl-soORZpTG8T95qhb6awNP7Qdz0XFnRestf1hf4CvNBUOJeRWpI-0L-bHWPKQ8BFd9SQtEjxsPVg6ajqI9JdmIEQI7Ll6HkiCZEQNw.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B0GJTGBHBX/?tag=infra0ac-21&psc=1",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/78",
+            "prezzo_originale": "199,99 €",
+            "prezzo_scontato": "118,99 €",
+            "sconto_percentuale": "41%",
+            "data_pubblicazione": "2026-08-05T09:26:07+00:00"
+        },
+        {
+            "etichetta": "",
+            "titolo": "Lagostina, Casseruola Fond 2 Manici Every Acciaio Inox 18 10 Cm 22 Pentole Cucina",
+            "immagine_url": "https://cdn4.telesco.pe/file/rGNNoW1KRqvqFSi1f6laafZJHEk1BpOA0BmTPLjYIjyO5QMLOIEk1rD0Cfxr307T4tsyzWjMv6xtdoGR4suMsNkmBMduw0yQHrpTkQ5VrhVUSOZw1v1OBzSVij9sNWAHvO0SN9HijAdjYvNtNTdmxD1pM-idcaLqZ-Xf02SEhdHU_ySflxqISADbs0RxpoT0Rsyfwq1B0oU3LQ7XMeg3mC6tFHGHgY1emxEr_skJC8n_p5ERaNGXubTNIvNn9GkA_VKhpjEkGlNb_6jV_uhbaThrajHFC1lXYrtqeIAMx9PA5ntU7RUEtO3C6Xb88dtTAlBLgtJE71Bd9w8c6stvKQ.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B00BW0DTJQ/?tag=infra0ac-21&psc=1",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/77",
+            "prezzo_originale": "38,60 €",
+            "prezzo_scontato": "18,99 €",
+            "sconto_percentuale": "51%",
+            "data_pubblicazione": "2026-08-05T09:17:33+00:00"
+        },
+        {
+            "etichetta": "Minimo Storico",
+            "titolo": "PETTI Artigiani Italiani - Telo Arredo in Microfibra, Copritutto",
+            "immagine_url": "https://cdn4.telesco.pe/file/IctvxqlAJwujzdogEdTLuBVOcrybcAAuCFizUoq7Q3zFgvtLCKLNdIW84yRZ4rTwYkCFUPDDObVMATxkJzFQKdVKHhlc3ZRRyWLq7x-bF4MkkB_JR7vo3tnjb9O4crtYWuuCEGdlmC7bCp7jhXgT2AEE3V4ITYzIfMUIpxlVa2sujmlmDA_4LywTMZJfvJhqP0IZ6jgqfzcXUnNroj3yXZLZhfVVF_huS3ygQqWETGTft5kZXPmKCTdXd0KBr8kvRg7NenqmwYqfmaTm_X_G053ZW3aqbV7MONXN7liZ2kBMZf3WV7CN_IIBhT1A4NccZ6b1SxuX54zay3fSx64UHw.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B0FQ2XY5TZ/?tag=infra0ac-21&psc=1&m=a11il2pnwyju7h",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/76",
+            "prezzo_originale": "59,90 €",
+            "prezzo_scontato": "25,30 €",
+            "sconto_percentuale": "58%",
+            "data_pubblicazione": "2026-08-05T09:11:47+00:00"
+        },
+        {
+            "etichetta": "Minimo Storico",
+            "titolo": "Ferro da stiro a vapore Clatronic DB 3703, piastra speciale in acciaio inox",
+            "immagine_url": "https://cdn4.telesco.pe/file/jAH6_wfLZR1S9lfE13ZFzTya9gxJX2zPahNNEfxDruM0ar-7-uEvuzRKH4fgffujXrHx-4PIadrvlPPxgIsUW6RSiy5IlE4mDOTvy5qQco1o2JtCQsF_nFm3MG8Y2an_hHGa6-kdjNll9ktPjw4qY_WXNP6UB17VlJH6PtPyqdLSws1Gi2NJVPeKwQWIsBBCrgcTgELIe5sW13gTxJaKj8uN-0isoDQcEBlGWXB2QHIowRdT3bfVOjAWyZrzfOkorP5lE8DMHrDfj02Dr_43CQLeOF9eaLo-B29Czn-kSeaz1DkvskGRbgQBrSZju4KxwskB9LqItMEBlP1oZ0mUOw.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B07GXKKKWW/?tag=infra0ac-21&psc=1&smid=a11il2pnwyju7h",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/75",
+            "prezzo_originale": "19,95 €",
+            "prezzo_scontato": "10,90 €",
+            "sconto_percentuale": "45%",
+            "data_pubblicazione": "2026-08-05T09:02:45+00:00"
+        },
+        {
+            "etichetta": "",
+            "titolo": "Tapo RV20 MAX Plus Robot Aspirapolvere Lavapavimenti con Mappatura 5300Pa",
+            "immagine_url": "https://cdn4.telesco.pe/file/GK_luip3MyPgfXHHDiYARaNbZxBxy6-dCZRZfi-6ieOcfvWCraMBqDodfhga4hOxY1X2ARckamgovcLlIM79499oQToGBjzubPRNoEEVKkcv8cfgV4HgkOn1PyImZgs2TFtjW07GHTljN8fApqLaQzdifz75ksQ2bLnnswqTpfYwL0UrmRv6Srnkmj11uTUMUi5bavdf-1YtAYI1tjxX5YmQZEZbCP0QnnryBSkLcYsqbapLPSj7hpu3HHcHFnCk1w6c1JNA7-_uNYhmoxJigsii_bKdUxLELP5V7VzpIwDQYtofN-lBqEWiFM6JQPjLNAdmycpsEyjkPUMh7HpfQA.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B0DHKM58LV/?tag=infra0ac-21&psc=1",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/74",
+            "prezzo_originale": "249,99 €",
+            "prezzo_scontato": "159,99 €",
+            "sconto_percentuale": "36%",
+            "data_pubblicazione": "2026-08-05T07:44:33+00:00"
+        },
+        {
+            "etichetta": "Minimo Storico",
+            "titolo": "Princess SlimFry Airfryer, 8L Capacità",
+            "immagine_url": "https://cdn4.telesco.pe/file/EAKJQOXjIYlKc6GhRK-bMtbVvWKUkj6ZPHCWelT3nzHAu1KKaJJBW0JX2ANSiLwgBQDIxWwvsdYwiRmGLBzz4DVa7FD-5-XWGJo6DSQ7Bb2nmAGLBc87Q-2ER5fgWWFTSybNwMZRUM1rPj-vKTXY5WyWFRDMSqFi-KEzjTwJsUFQc0ncJMT_g4S8VCECVLubZyv-rqLzLgN5yj2KrHNYWUEI7Y6w9MVey8wsFY33iNStYFda8s8gvCMR3HjHx0iqui5qw4peiQ0YZ5tF5JxO3qUHBzvG4e6uwzyTtDlU3MlXQFFIqVPyNyXGCzXafKs-joFvKau5aM8m2m-Ly-PVzQ.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B0F6VQBY29/?tag=infra0ac-21&psc=1",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/73",
+            "prezzo_originale": "104,99 €",
+            "prezzo_scontato": "64,99 €",
+            "sconto_percentuale": "38%",
+            "data_pubblicazione": "2026-08-05T04:43:31+00:00"
+        },
+        {
+            "etichetta": "Minimo Storico",
+            "titolo": "roborock Q10 S5 Set Robot Aspirapolvere 10.000Pa, Panno Sollevabile",
+            "immagine_url": "https://cdn4.telesco.pe/file/VUWEAxdpPTRtj1b2DidQKUnVlfXks2EF6hTyvaJRXh-Z-J5wUsjA7d1WxNf6dWjuocD25aXHX5Z_GOh3NOTbaaT3m9oZkxFhpbxV--aBIs1hNy8oUoyehBnIPdMxAlq-hl4kEWufLA6o7VCOVcpEonHUSFoWzo4DQ_sLgobKlaGuNxf7LmErBcjAUHnZSQ35oM7obvFKumpa1duT2vWpAbPAytCIKbbNenjrenDamk5JW2lREU8mnMNF0NW-OWhDJ0tIXv1Q7glS7S5_NVgnq3MI7JhyR5z0OYhaGR3Lw2DTSq8cO6xArvOCdhfyFvUbFM62rrRbZhy9HHEjHwwO1w.jpg",
+            "link_affiliato": "https://www.amazon.it/dp/B0DSZJKXBC/?tag=infra0ac-21&psc=1",
+            "link_telegram_post": "https://t.me/s/CasaRisparmio/72",
+            "prezzo_originale": "299,99 €",
+            "prezzo_scontato": "159,99 €",
+            "sconto_percentuale": "47%",
+            "data_pubblicazione": "2026-08-04T21:49:04+00:00"
+        }
+    ],
+    "ultimo_aggiornamento": "2026-08-05 14:19:04"
 }

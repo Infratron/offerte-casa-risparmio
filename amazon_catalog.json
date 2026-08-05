@@ -1,5 +1,12 @@
 {
-  "categorie": {},
-  "partner_tag": "infra0ac-21",
-  "ultimo_aggiornamento": ""
+    "categorie": {
+        "casa": [],
+        "cucina": [],
+        "elettrodomestici": [],
+        "elettronica": [],
+        "giardino": [],
+        "fai da te": []
+    },
+    "partner_tag": "infra0ac-21",
+    "ultimo_aggiornamento": "2026-08-05 14:19:07"
 }
