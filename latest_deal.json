@@ -1,0 +1,6 @@
+{
+  "offerte": [],
+  "ultimo_aggiornamento": "",
+  "stato": "in_attesa_primo_workflow",
+  "nota": "Il workflow GitHub Actions popola automaticamente le ultime 10 offerte dal canale Telegram."
+}
