@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "casa-risparmio-live",
-  "main": "worker.js",
+  "main": "api/worker.js",
   "compatibility_date": "2026-08-06",
   "kv_namespaces": [
     {
