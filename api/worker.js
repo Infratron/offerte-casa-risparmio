@@ -18,7 +18,8 @@ function cors(origin = "") {
     "Access-Control-Allow-Origin":
       origin === SITE_ORIGIN ? origin : SITE_ORIGIN,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Telegram-Bot-Api-Secret-Token",
+    "Access-Control-Allow-Headers":
+      "Content-Type, X-Telegram-Bot-Api-Secret-Token",
     "Cache-Control": "no-store",
     "Vary": "Origin"
   };
@@ -100,7 +101,15 @@ function prices(text = "") {
   };
 }
 
-function amazonUrl(text, entities = []) {
+/*
+ * Cerca un link Amazon in:
+ *
+ * 1. Telegram text_link entities
+ * 2. pulsanti inline Telegram
+ * 3. URL scritti direttamente nel testo
+ */
+function amazonUrl(text = "", entities = [], buttons = []) {
+  // 1. Link presenti nelle entità Telegram
   for (const entity of entities || []) {
     if (
       entity?.type === "text_link" &&
@@ -110,6 +119,16 @@ function amazonUrl(text, entities = []) {
     }
   }
 
+  // 2. Link presenti nei pulsanti inline
+  for (const button of buttons || []) {
+    const url = button?.url || "";
+
+    if (/amazon\.|amzn\./i.test(url)) {
+      return url;
+    }
+  }
+
+  // 3. Link scritti direttamente nel testo
   const urls =
     String(text).match(/https?:\/\/[^\s<>]+/gi) || [];
 
@@ -131,38 +150,80 @@ function telegramPost(message) {
   return `https://t.me/${CHANNEL_USERNAME}/${message.message_id}`;
 }
 
+/*
+ * Estrae tutti gli URL dai pulsanti inline presenti
+ * in un messaggio Telegram.
+ */
+function buttonsFromMessage(message) {
+  const buttons = [];
+
+  for (
+    const row of message.reply_markup?.inline_keyboard || []
+  ) {
+    for (const button of row || []) {
+      if (button?.url) {
+        buttons.push({
+          url: button.url
+        });
+      }
+    }
+  }
+
+  return buttons;
+}
+
 function fromMessage(message) {
-  const text = message.text || message.caption || "";
+  const text =
+    message.text ||
+    message.caption ||
+    "";
 
   const entities =
     message.entities ||
     message.caption_entities ||
     [];
 
-  const amazonLink = amazonUrl(text, entities);
+  const buttons =
+    buttonsFromMessage(message);
+
+  const amazonLink =
+    amazonUrl(
+      text,
+      entities,
+      buttons
+    );
 
   if (!amazonLink) {
     return null;
   }
 
-  const parsedPrices = prices(text);
+  const parsedPrices =
+    prices(text);
 
   const photo =
-    Array.isArray(message.photo) && message.photo.length
+    Array.isArray(message.photo) &&
+    message.photo.length
       ? message.photo.at(-1)
       : null;
 
   return {
-    id: String(message.message_id),
-    asin: asinFromUrl(amazonLink),
-    titolo: cleanTitle(text),
+    id:
+      String(message.message_id),
+
+    asin:
+      asinFromUrl(amazonLink),
+
+    titolo:
+      cleanTitle(text),
 
     immagine_file_id:
       photo?.file_id || "",
 
-    immagine_url: "",
+    immagine_url:
+      "",
 
-    link_affiliato: amazonLink,
+    link_affiliato:
+      amazonLink,
 
     link_telegram_post:
       telegramPost(message),
@@ -178,13 +239,16 @@ function fromMessage(message) {
 
     data_pubblicazione:
       message.date
-        ? new Date(message.date * 1000).toISOString()
+        ? new Date(
+            message.date * 1000
+          ).toISOString()
         : new Date().toISOString()
   };
 }
 
 async function readOffers(env) {
-  const raw = await env.OFFERS.get("latest");
+  const raw =
+    await env.OFFERS.get("latest");
 
   if (!raw) {
     return {
@@ -209,28 +273,39 @@ async function writeOffers(env, offers) {
   const unique = [];
   const seen = new Set();
 
-  const sorted = [...offers].sort(
-    (a, b) =>
-      new Date(b.data_pubblicazione || 0) -
-      new Date(a.data_pubblicazione || 0)
-  );
+  const sorted =
+    [...offers].sort(
+      (a, b) =>
+        new Date(
+          b.data_pubblicazione || 0
+        ) -
+        new Date(
+          a.data_pubblicazione || 0
+        )
+    );
 
   for (const offer of sorted) {
-    if (!offer?.id || seen.has(offer.id)) {
+    if (
+      !offer?.id ||
+      seen.has(offer.id)
+    ) {
       continue;
     }
 
     seen.add(offer.id);
     unique.push(offer);
 
-    if (unique.length >= MAX_OFFERS) {
+    if (
+      unique.length >= MAX_OFFERS
+    ) {
       break;
     }
   }
 
   const data = {
     offerte: unique,
-    ultimo_aggiornamento: new Date().toISOString(),
+    ultimo_aggiornamento:
+      new Date().toISOString(),
     conteggio: unique.length
   };
 
@@ -242,23 +317,40 @@ async function writeOffers(env, offers) {
   return data;
 }
 
-async function telegram(env, method, body = null) {
-  const response = await fetch(
-    `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`,
-    {
-      method: body ? "POST" : "GET",
-      headers: body
-        ? { "Content-Type": "application/json" }
-        : undefined,
-      body: body
-        ? JSON.stringify(body)
-        : undefined
-    }
-  );
+async function telegram(
+  env,
+  method,
+  body = null
+) {
+  const response =
+    await fetch(
+      `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`,
+      {
+        method:
+          body ? "POST" : "GET",
 
-  const data = await response.json();
+        headers:
+          body
+            ? {
+                "Content-Type":
+                  "application/json"
+              }
+            : undefined,
 
-  if (!response.ok || !data.ok) {
+        body:
+          body
+            ? JSON.stringify(body)
+            : undefined
+      }
+    );
+
+  const data =
+    await response.json();
+
+  if (
+    !response.ok ||
+    !data.ok
+  ) {
     throw new Error(
       data.description ||
       `Telegram ${method} error`
@@ -270,15 +362,6 @@ async function telegram(env, method, body = null) {
 
 /*
  * AMAZON CREATORS API
- *
- * Italia:
- * marketplace = www.amazon.it
- *
- * Le credenziali EU 3.2 utilizzano:
- * api.amazon.co.uk/auth/o2/token
- *
- * API:
- * creatorsapi.amazon/catalog/v1
  */
 
 async function creatorsToken(env) {
@@ -291,46 +374,61 @@ async function creatorsToken(env) {
 
   if (
     amazonTokenCache.token &&
-    Date.now() < amazonTokenCache.expiresAt
+    Date.now() <
+      amazonTokenCache.expiresAt
   ) {
     return amazonTokenCache.token;
   }
 
-  const response = await fetch(
-    AMAZON_TOKEN_URL,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        grant_type: "client_credentials",
-        client_id:
-          env.AMAZON_CREATORS_CLIENT_ID,
-        client_secret:
-          env.AMAZON_CREATORS_CLIENT_SECRET,
-        scope: "creatorsapi::default"
-      })
-    }
-  );
+  const response =
+    await fetch(
+      AMAZON_TOKEN_URL,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          grant_type:
+            "client_credentials",
+
+          client_id:
+            env.AMAZON_CREATORS_CLIENT_ID,
+
+          client_secret:
+            env.AMAZON_CREATORS_CLIENT_SECRET,
+
+          scope:
+            "creatorsapi::default"
+        })
+      }
+    );
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText =
+      await response.text();
 
     throw new Error(
       `Amazon token ${response.status}: ${errorText}`
     );
   }
 
-  const data = await response.json();
+  const data =
+    await response.json();
 
   amazonTokenCache = {
-    token: data.access_token,
+    token:
+      data.access_token,
+
     expiresAt:
       Date.now() +
       Math.max(
         60,
-        (data.expires_in || 3600) - 120
+        (data.expires_in || 3600) -
+          120
       ) *
         1000
   };
@@ -338,7 +436,10 @@ async function creatorsToken(env) {
   return data.access_token;
 }
 
-async function creatorsGetItem(env, asin) {
+async function creatorsGetItem(
+  env,
+  asin
+) {
   if (
     !asin ||
     !env.AMAZON_PARTNER_TAG
@@ -346,7 +447,8 @@ async function creatorsGetItem(env, asin) {
     return null;
   }
 
-  const token = await creatorsToken(env);
+  const token =
+    await creatorsToken(env);
 
   if (!token) {
     return null;
@@ -354,7 +456,9 @@ async function creatorsGetItem(env, asin) {
 
   const payload = {
     itemIds: [asin],
-    itemIdType: "ASIN",
+
+    itemIdType:
+      "ASIN",
 
     marketplace:
       AMAZON_MARKETPLACE,
@@ -377,27 +481,31 @@ async function creatorsGetItem(env, asin) {
     ]
   };
 
-  const response = await fetch(
-    `${AMAZON_API}/getItems`,
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      `${AMAZON_API}/getItems`,
+      {
+        method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
+        headers: {
+          "Content-Type":
+            "application/json",
 
-        Authorization:
-          `Bearer ${token}`,
+          Authorization:
+            `Bearer ${token}`,
 
-        "x-marketplace":
-          AMAZON_MARKETPLACE
-      },
+          "x-marketplace":
+            AMAZON_MARKETPLACE
+        },
 
-      body: JSON.stringify(payload)
-    }
-  );
+        body:
+          JSON.stringify(payload)
+      }
+    );
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText =
+      await response.text();
 
     console.error(
       "Creators API error:",
@@ -408,7 +516,8 @@ async function creatorsGetItem(env, asin) {
     return null;
   }
 
-  const data = await response.json();
+  const data =
+    await response.json();
 
   return (
     data?.itemsResult?.items?.[0] ||
@@ -416,7 +525,10 @@ async function creatorsGetItem(env, asin) {
   );
 }
 
-function enrichFromAmazon(offer, item) {
+function enrichFromAmazon(
+  offer,
+  item
+) {
   if (!item) {
     return offer;
   }
@@ -426,7 +538,8 @@ function enrichFromAmazon(offer, item) {
 
   const listing =
     listings.find(
-      item => item.isBuyBoxWinner
+      item =>
+        item.isBuyBoxWinner
     ) ||
     listings[0];
 
@@ -476,21 +589,31 @@ function enrichFromAmazon(offer, item) {
       ""
   };
 
-  if (price?.amount != null) {
+  if (
+    price?.amount != null
+  ) {
     enriched.prezzo_scontato =
       `${Number(price.amount)
         .toFixed(2)
         .replace(".", ",")} €`;
   }
 
-  if (saving != null) {
+  if (
+    saving != null
+  ) {
     enriched.sconto_percentuale =
-      `-${Math.round(Number(saving))}%`;
+      `-${Math.round(
+        Number(saving)
+      )}%`;
   }
 
-  if (savingBasis?.amount != null) {
+  if (
+    savingBasis?.amount != null
+  ) {
     enriched.prezzo_originale =
-      `${Number(savingBasis.amount)
+      `${Number(
+        savingBasis.amount
+      )
         .toFixed(2)
         .replace(".", ",")} €`;
   }
@@ -498,7 +621,10 @@ function enrichFromAmazon(offer, item) {
   return enriched;
 }
 
-async function enrich(env, offer) {
+async function enrich(
+  env,
+  offer
+) {
   try {
     if (!offer.asin) {
       return offer;
@@ -524,7 +650,10 @@ async function enrich(env, offer) {
   }
 }
 
-async function notify(env, offer) {
+async function notify(
+  env,
+  offer
+) {
   if (
     !env.ONESIGNAL_APP_ID ||
     !env.ONESIGNAL_REST_API_KEY
@@ -541,46 +670,49 @@ async function notify(env, offer) {
       ? ` · ${offer.sconto_percentuale}`
       : "";
 
-  const response = await fetch(
-    "https://api.onesignal.com/notifications",
-    {
-      method: "POST",
+  const response =
+    await fetch(
+      "https://api.onesignal.com/notifications",
+      {
+        method: "POST",
 
-      headers: {
-        Authorization:
-          `Key ${env.ONESIGNAL_REST_API_KEY}`,
+        headers: {
+          Authorization:
+            `Key ${env.ONESIGNAL_REST_API_KEY}`,
 
-        "Content-Type":
-          "application/json"
-      },
-
-      body: JSON.stringify({
-        app_id:
-          env.ONESIGNAL_APP_ID,
-
-        included_segments:
-          ["Subscribed Users"],
-
-        headings: {
-          it: "🔥 Nuova offerta su Casa & Risparmio"
+          "Content-Type":
+            "application/json"
         },
 
-        contents: {
-          it:
-            `${title}${discount}`
-              .slice(0, 120)
-        },
+        body:
+          JSON.stringify({
+            app_id:
+              env.ONESIGNAL_APP_ID,
 
-        url:
-          offer.link_affiliato ||
-          offer.link_telegram_post ||
-          SITE_URL,
+            included_segments:
+              ["Subscribed Users"],
 
-        chrome_web_icon:
-          `${SITE_URL}icon-192.png`
-      })
-    }
-  );
+            headings: {
+              it:
+                "🔥 Nuova offerta su Casa & Risparmio"
+            },
+
+            contents: {
+              it:
+                `${title}${discount}`
+                  .slice(0, 120)
+            },
+
+            url:
+              offer.link_affiliato ||
+              offer.link_telegram_post ||
+              SITE_URL,
+
+            chrome_web_icon:
+              `${SITE_URL}icon-192.png`
+          })
+      }
+    );
 
   if (!response.ok) {
     console.error(
@@ -591,7 +723,10 @@ async function notify(env, offer) {
   }
 }
 
-function authorisedSetup(url, env) {
+function authorisedSetup(
+  url,
+  env
+) {
   return (
     env.SETUP_KEY &&
     url.searchParams.get("key") ===
@@ -599,16 +734,64 @@ function authorisedSetup(url, env) {
   );
 }
 
-async function seed(env) {
-  const response = await fetch(
-    `https://t.me/s/${CHANNEL_USERNAME}`,
-    {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0"
-      }
+/*
+ * Estrae i pulsanti inline dal blocco HTML
+ * restituito dalla pagina pubblica Telegram.
+ *
+ * Telegram può avere class e href in ordine
+ * differente, quindi analizziamo l'intero tag <a>.
+ */
+function buttonsFromTelegramHtml(
+  block
+) {
+  const buttons = [];
+
+  const anchors =
+    block.matchAll(
+      /<a\b[^>]*>/gi
+    );
+
+  for (const match of anchors) {
+    const tag =
+      match[0] || "";
+
+    if (
+      !/tgme_widget_message_inline_button/i.test(
+        tag
+      )
+    ) {
+      continue;
     }
-  );
+
+    const href =
+      tag.match(
+        /\bhref=["']([^"']+)["']/i
+      )?.[1] || "";
+
+    if (!href) {
+      continue;
+    }
+
+    buttons.push({
+      url:
+        decode(href)
+    });
+  }
+
+  return buttons;
+}
+
+async function seed(env) {
+  const response =
+    await fetch(
+      `https://t.me/s/${CHANNEL_USERNAME}`,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0"
+        }
+      }
+    );
 
   if (!response.ok) {
     throw new Error(
@@ -654,8 +837,22 @@ async function seed(env) {
     const text =
       stripHtml(textHtml);
 
+    /*
+     * IMPORTANTE:
+     * il link Amazon può essere nel pulsante
+     * "Acquista Ora", non nel testo.
+     */
+    const buttons =
+      buttonsFromTelegramHtml(
+        block
+      );
+
     const link =
-      amazonUrl(text);
+      amazonUrl(
+        text,
+        [],
+        buttons
+      );
 
     if (!link) {
       continue;
@@ -731,29 +928,40 @@ async function seed(env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(
+    request,
+    env
+  ) {
     const url =
       new URL(request.url);
 
     const origin =
-      request.headers.get("Origin") ||
-      "";
+      request.headers.get(
+        "Origin"
+      ) || "";
 
     if (
-      request.method === "OPTIONS"
+      request.method ===
+      "OPTIONS"
     ) {
-      return new Response(null, {
-        status: 204,
-        headers: cors(origin)
-      });
+      return new Response(
+        null,
+        {
+          status: 204,
+          headers:
+            cors(origin)
+        }
+      );
     }
 
     /*
      * TELEGRAM WEBHOOK
      */
     if (
-      url.pathname === "/telegram" &&
-      request.method === "POST"
+      url.pathname ===
+        "/telegram" &&
+      request.method ===
+        "POST"
     ) {
       if (
         !env.TELEGRAM_WEBHOOK_SECRET ||
@@ -762,9 +970,12 @@ export default {
         ) !==
           env.TELEGRAM_WEBHOOK_SECRET
       ) {
-        return new Response("", {
-          status: 401
-        });
+        return new Response(
+          "",
+          {
+            status: 401
+          }
+        );
       }
 
       try {
@@ -773,10 +984,13 @@ export default {
 
         const message =
           update.channel_post ||
+          update.edited_channel_post ||
           null;
 
         if (!message) {
-          return new Response("ok");
+          return new Response(
+            "ok"
+          );
         }
 
         if (
@@ -785,14 +999,20 @@ export default {
             .toLowerCase() !==
             CHANNEL_USERNAME.toLowerCase()
         ) {
-          return new Response("ok");
+          return new Response(
+            "ok"
+          );
         }
 
         let offer =
-          fromMessage(message);
+          fromMessage(
+            message
+          );
 
         if (!offer) {
-          return new Response("ok");
+          return new Response(
+            "ok"
+          );
         }
 
         offer =
@@ -802,25 +1022,37 @@ export default {
           );
 
         const current =
-          await readOffers(env);
+          await readOffers(
+            env
+          );
 
         const old =
-          (current.offerte || [])
+          (current.offerte ||
+            [])
             .find(
               item =>
-                item.id === offer.id
+                item.id ===
+                offer.id
             );
 
         const next = old
-          ? (current.offerte || [])
-              .map(item =>
-                item.id === offer.id
-                  ? { ...item, ...offer }
+          ? (
+              current.offerte ||
+              []
+            ).map(
+              item =>
+                item.id ===
+                offer.id
+                  ? {
+                      ...item,
+                      ...offer
+                    }
                   : item
-              )
+            )
           : [
               offer,
-              ...(current.offerte || [])
+              ...(current.offerte ||
+                [])
             ];
 
         await writeOffers(
@@ -835,14 +1067,18 @@ export default {
           );
         }
 
-        return new Response("ok");
+        return new Response(
+          "ok"
+        );
       } catch (error) {
         console.error(
           "Telegram webhook error:",
           error
         );
 
-        return new Response("ok");
+        return new Response(
+          "ok"
+        );
       }
     }
 
@@ -850,12 +1086,16 @@ export default {
      * LIVE OFFERS
      */
     if (
-      url.pathname === "/offers" &&
-      request.method === "GET"
+      url.pathname ===
+        "/offers" &&
+      request.method ===
+        "GET"
     ) {
       try {
         return json(
-          await readOffers(env),
+          await readOffers(
+            env
+          ),
           200,
           origin
         );
@@ -863,7 +1103,8 @@ export default {
         return json(
           {
             offerte: [],
-            ultimo_aggiornamento: null,
+            ultimo_aggiornamento:
+              null,
             conteggio: 0
           },
           200,
@@ -876,8 +1117,10 @@ export default {
      * TELEGRAM IMAGE PROXY
      */
     if (
-      url.pathname === "/image" &&
-      request.method === "GET"
+      url.pathname ===
+        "/image" &&
+      request.method ===
+        "GET"
     ) {
       const fileId =
         url.searchParams.get(
@@ -888,9 +1131,12 @@ export default {
         !fileId ||
         !env.TELEGRAM_BOT_TOKEN
       ) {
-        return new Response("", {
-          status: 404
-        });
+        return new Response(
+          "",
+          {
+            status: 404
+          }
+        );
       }
 
       try {
@@ -899,7 +1145,8 @@ export default {
             env,
             "getFile",
             {
-              file_id: fileId
+              file_id:
+                fileId
             }
           );
 
@@ -911,7 +1158,9 @@ export default {
         return new Response(
           image.body,
           {
-            status: image.status,
+            status:
+              image.status,
+
             headers: {
               "Content-Type":
                 image.headers.get(
@@ -925,9 +1174,12 @@ export default {
           }
         );
       } catch {
-        return new Response("", {
-          status: 404
-        });
+        return new Response(
+          "",
+          {
+            status: 404
+          }
+        );
       }
     }
 
@@ -939,8 +1191,11 @@ export default {
         "/setup",
         "/seed",
         "/status"
-      ].includes(url.pathname) &&
-      request.method === "GET"
+      ].includes(
+        url.pathname
+      ) &&
+      request.method ===
+        "GET"
     ) {
       if (
         !authorisedSetup(
@@ -948,14 +1203,18 @@ export default {
           env
         )
       ) {
-        return new Response("", {
-          status: 403
-        });
+        return new Response(
+          "",
+          {
+            status: 403
+          }
+        );
       }
 
       try {
         if (
-          url.pathname === "/setup"
+          url.pathname ===
+          "/setup"
         ) {
           const result =
             await telegram(
@@ -981,7 +1240,8 @@ export default {
           return json(
             {
               ok: true,
-              webhook: result
+              webhook:
+                result
             },
             200,
             origin
@@ -989,7 +1249,8 @@ export default {
         }
 
         if (
-          url.pathname === "/seed"
+          url.pathname ===
+          "/seed"
         ) {
           return json(
             await seed(env),
@@ -1010,7 +1271,8 @@ export default {
         return json(
           {
             ok: false,
-            error: error.message
+            error:
+              error.message
           },
           500,
           origin
@@ -1018,8 +1280,11 @@ export default {
       }
     }
 
-    return new Response("", {
-      status: 404
-    });
+    return new Response(
+      "",
+      {
+        status: 404
+      }
+    );
   }
 };
