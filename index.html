@@ -143,6 +143,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
 .section-title .bolt{color:var(--yellow);font-size:22px;margin-right:6px}
 .section-link{color:var(--yellow);font-weight:900;text-decoration:none;font-size:13px}
 .section-sub{color:var(--muted);font-size:11px;margin-top:4px}
+#last-updated{color:#6cb2ff}
 .carousel-wrap{position:relative}
 .carousel{
   display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px;
@@ -165,7 +166,12 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
 .deal-title{font-size:14px;line-height:1.3;font-weight:850;min-height:55px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .deal-price{font-size:19px;font-weight:950;color:var(--yellow);margin-top:10px}
 .deal-old{font-size:11px;color:#7d8998;text-decoration:line-through;margin-left:5px;font-weight:650}
-.deal-meta{font-size:10px;color:#8d9bad;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.deal-meta{font-size:10px;color:#8d9bad;overflow:hidden;text-overflow:ellipsis}
+.deal-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:5px}
+.deal-chip{font-size:9px;font-weight:850;padding:3px 7px;border-radius:999px;letter-spacing:.02em;white-space:nowrap}
+.tag-amber{background:rgba(255,194,28,.16);color:#ffc21c}
+.tag-grey{background:rgba(255,255,255,.09);color:#aab7c7}
+.tag-blue{background:rgba(22,135,255,.16);color:#6cb2ff}
 .deal-time{display:flex;align-items:center;gap:5px;color:#c0cbd8;font-size:10px;margin-top:8px}
 .deal-time svg{width:12px;height:12px;color:var(--blue2)}
 .amazon-btn{width:100%;margin-top:12px;min-height:39px;font-size:12px;border-radius:11px}
@@ -313,7 +319,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
   <div class="section-head">
     <div>
       <div class="section-title"><span class="bolt">ϟ</span>ULTIME OFFERTE</div>
-      <div class="section-sub">Le più recenti sono sempre a sinistra.</div>
+      <div class="section-sub">Le più recenti sono sempre a sinistra.<span id="last-updated"></span></div>
     </div>
     <a class="section-link" id="all-tg" href="#" target="_blank" rel="noopener">Vedi tutte le offerte →</a>
   </div>
@@ -411,13 +417,25 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
            d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"});
   }
 
+  function availabilityLabel(type){
+    const map={
+      IN_STOCK_SCARCE:{label:"Ultimi pezzi",cls:"tag-amber"},
+      OUT_OF_STOCK:{label:"Non disponibile",cls:"tag-grey"},
+      UNAVAILABLE:{label:"Non disponibile",cls:"tag-grey"},
+      PREORDER:{label:"Preordinabile",cls:"tag-blue"},
+      AVAILABLE_DATE:{label:"Disponibile a breve",cls:"tag-blue"}
+    };
+    return map[type] || null;
+  }
+
   function card(o,index){
     const img=imageFor(o);
     const discount=String(o.sconto_percentuale || "").replace(/^-/,"");
     const price=o.prezzo_scontato || "";
     const old=o.prezzo_originale || "";
     const title=o.titolo || "Occasione da scoprire";
-    const meta=[o.merchant,o.condition].filter(Boolean).join(" · ");
+    const meta=[o.brand,o.merchant,o.condition].filter(Boolean).join(" · ");
+    const avail=availabilityLabel(o.availability);
     return `<article class="deal" data-offer-id="${esc(o.id)}">
       <div class="deal-media">
         ${img ? `<img loading="${index<4?"eager":"lazy"}" src="${esc(img)}" alt="${esc(title)}">` : `<span class="deal-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="#94a0ad" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 17 4.5-5 3.5 4 2.5-3 4 4"/></svg></span>`}
@@ -427,7 +445,11 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
       <div class="deal-body">
         <div class="deal-title">${esc(title)}</div>
         ${price ? `<div class="deal-price">${esc(price)}${old ? ` <span class="deal-old">${esc(old)}</span>` : ""}</div>` : ""}
-        ${meta ? `<div class="deal-meta">${esc(meta)}</div>` : ""}
+        ${meta || avail || o.deal_badge ? `<div class="deal-tags">
+          ${meta ? `<span class="deal-meta">${esc(meta)}</span>` : ""}
+          ${avail ? `<span class="deal-chip ${avail.cls}">${esc(avail.label)}</span>` : ""}
+          ${o.deal_badge ? `<span class="deal-chip tag-blue">${esc(o.deal_badge)}</span>` : ""}
+        </div>` : ""}
         ${o.data_pubblicazione ? `<div class="deal-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Pubblicata ${esc(timeLabel(o.data_pubblicazione))}</div>` : ""}
         <a class="btn amazon-btn" href="${esc(o.link_affiliato||"#")}" target="_blank" rel="noopener noreferrer nofollow sponsored">
           <span class="amazon-logo">a</span> Apri su Amazon <span>›</span>
@@ -436,9 +458,18 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
     </article>`;
   }
 
+  function updateLastUpdated(v){
+    const el=$("last-updated");
+    if(!el) return;
+    const d=new Date(v||0);
+    if(!v || Number.isNaN(d.getTime())){ el.textContent=""; return; }
+    el.textContent=` · Aggiornato alle ${d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`;
+  }
+
   let signature="";
   function render(data){
     const list=normalizeOffers(data?.offerte);
+    updateLastUpdated(data?.ultimo_aggiornamento);
     const el=$("offers");
     if(!list.length){
       el.innerHTML='<div class="empty">Le nuove occasioni stanno arrivando. Torna presto.</div>';
