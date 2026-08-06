@@ -43,11 +43,9 @@ function json(data, status = 200, origin = "") {
     JSON.stringify(data),
     {
       status,
-
       headers: {
         "Content-Type":
           "application/json; charset=utf-8",
-
         ...cors(origin)
       }
     }
@@ -56,7 +54,7 @@ function json(data, status = 200, origin = "") {
 
 
 /* =========================================================
-   HTML / TEXT HELPERS
+   HTML / TEXT
 ========================================================= */
 
 function decode(value = "") {
@@ -94,7 +92,6 @@ function cleanTitle(text = "") {
     .filter(Boolean);
 
   for (const raw of lines) {
-
     const line = raw
       .replace(
         /[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu,
@@ -131,46 +128,35 @@ function cleanTitle(text = "") {
 ========================================================= */
 
 function prices(text = "") {
-
   const values = [
     ...String(text).matchAll(
       /(\d{1,4}(?:[.,]\d{2})?)\s*€/g
     )
   ]
-
     .map(m =>
       Number(
         m[1].replace(",", ".")
       )
     )
-
     .filter(Number.isFinite);
-
 
   const unique = [
     ...new Set(values)
-  ].sort(
-    (a, b) => a - b
-  );
-
+  ].sort((a, b) => a - b);
 
   const percentage =
     String(text).match(
       /(\d{1,3})\s*%/
     );
 
-
   const format = value =>
     value == null
       ? ""
       : value
           .toFixed(2)
-          .replace(".", ",") +
-        " €";
-
+          .replace(".", ",") + " €";
 
   return {
-
     prezzo_scontato:
       format(unique[0]),
 
@@ -213,19 +199,11 @@ function cleanUrl(url = "") {
 }
 
 
-/*
- * Cerca un link Amazon nel testo.
- */
 function amazonUrl(
   text = "",
   entities = []
 ) {
-
-  /*
-   * Prima cerchiamo nei text_link di Telegram.
-   */
   for (const entity of entities || []) {
-
     if (
       entity?.type === "text_link" &&
       isAmazonUrl(entity.url || "")
@@ -234,22 +212,13 @@ function amazonUrl(
     }
   }
 
-
-  /*
-   * Poi cerchiamo URL scritti direttamente
-   * nel testo.
-   */
   const urls =
     String(text).match(
       /https?:\/\/[^\s<>]+/gi
     ) || [];
 
-
   const found =
-    urls.find(
-      url => isAmazonUrl(url)
-    );
-
+    urls.find(url => isAmazonUrl(url));
 
   return found
     ? cleanUrl(found)
@@ -257,25 +226,13 @@ function amazonUrl(
 }
 
 
-/*
- * Cerca un link Amazon nei pulsanti inline
- * del messaggio Telegram.
- */
-function amazonUrlFromKeyboard(
-  replyMarkup
-) {
-
+function amazonUrlFromKeyboard(replyMarkup) {
   const rows =
     replyMarkup?.inline_keyboard || [];
 
-
   for (const row of rows) {
-
     for (const button of row || []) {
-
-      const url =
-        button?.url || "";
-
+      const url = button?.url || "";
 
       if (
         url &&
@@ -286,33 +243,20 @@ function amazonUrlFromKeyboard(
     }
   }
 
-
   return "";
 }
 
 
-/*
- * Funzione completa per Telegram:
- *
- * 1. testo
- * 2. entity text_link
- * 3. pulsante inline
- */
-function amazonUrlFromMessage(
-  message
-) {
-
+function amazonUrlFromMessage(message) {
   const text =
     message?.text ||
     message?.caption ||
     "";
 
-
   const entities =
     message?.entities ||
     message?.caption_entities ||
     [];
-
 
   const fromText =
     amazonUrl(
@@ -320,22 +264,18 @@ function amazonUrlFromMessage(
       entities
     );
 
-
   if (fromText) {
     return fromText;
   }
-
 
   const fromKeyboard =
     amazonUrlFromKeyboard(
       message?.reply_markup
     );
 
-
   if (fromKeyboard) {
     return fromKeyboard;
   }
-
 
   return "";
 }
@@ -346,12 +286,10 @@ function amazonUrlFromMessage(
 ========================================================= */
 
 function asinFromUrl(url = "") {
-
   const match =
     String(url).match(
       /(?:\/dp\/|\/gp\/product\/|\/gp\/aw\/d\/|\/product\/)([A-Z0-9]{10})(?:[/?#]|$)/i
     );
-
 
   return match
     ? match[1].toUpperCase()
@@ -360,11 +298,10 @@ function asinFromUrl(url = "") {
 
 
 /* =========================================================
-   TELEGRAM POST URL
+   TELEGRAM POST
 ========================================================= */
 
 function telegramPost(message) {
-
   return (
     `https://t.me/${CHANNEL_USERNAME}/` +
     `${message.message_id}`
@@ -377,32 +314,22 @@ function telegramPost(message) {
 ========================================================= */
 
 function fromMessage(message) {
-
   const text =
     message.text ||
     message.caption ||
     "";
 
-
-  /*
-   * IMPORTANTISSIMO:
-   * il link Amazon può essere nel pulsante
-   * sotto il testo del post.
-   */
   const amazonLink =
     amazonUrlFromMessage(
       message
     );
 
-
   if (!amazonLink) {
     return null;
   }
 
-
   const parsedPrices =
     prices(text);
-
 
   const photo =
     Array.isArray(message.photo) &&
@@ -410,16 +337,12 @@ function fromMessage(message) {
       ? message.photo.at(-1)
       : null;
 
-
   return {
-
     id:
       String(message.message_id),
 
     asin:
-      asinFromUrl(
-        amazonLink
-      ),
+      asinFromUrl(amazonLink),
 
     titolo:
       cleanTitle(text),
@@ -435,9 +358,6 @@ function fromMessage(message) {
 
     link_telegram_post:
       telegramPost(message),
-
-    preco_originale:
-      "",
 
     prezzo_originale:
       parsedPrices.prezzo_originale,
@@ -463,15 +383,10 @@ function fromMessage(message) {
 ========================================================= */
 
 async function readOffers(env) {
-
   const raw =
-    await env.OFFERS.get(
-      "latest"
-    );
-
+    await env.OFFERS.get("latest");
 
   if (!raw) {
-
     return {
       offerte: [],
       ultimo_aggiornamento: null,
@@ -479,13 +394,9 @@ async function readOffers(env) {
     };
   }
 
-
   try {
-
     return JSON.parse(raw);
-
   } catch {
-
     return {
       offerte: [],
       ultimo_aggiornamento: null,
@@ -499,10 +410,8 @@ async function writeOffers(
   env,
   offers
 ) {
-
   const unique = [];
   const seen = new Set();
-
 
   const sorted =
     [...offers].sort(
@@ -515,9 +424,7 @@ async function writeOffers(
         )
     );
 
-
   for (const offer of sorted) {
-
     if (
       !offer?.id ||
       seen.has(offer.id)
@@ -525,10 +432,8 @@ async function writeOffers(
       continue;
     }
 
-
     seen.add(offer.id);
     unique.push(offer);
-
 
     if (
       unique.length >=
@@ -538,9 +443,7 @@ async function writeOffers(
     }
   }
 
-
   const data = {
-
     offerte:
       unique,
 
@@ -551,12 +454,10 @@ async function writeOffers(
       unique.length
   };
 
-
   await env.OFFERS.put(
     "latest",
     JSON.stringify(data)
   );
-
 
   return data;
 }
@@ -571,12 +472,10 @@ async function telegram(
   method,
   body = null
 ) {
-
   const response =
     await fetch(
       `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`,
       {
-
         method:
           body
             ? "POST"
@@ -597,22 +496,18 @@ async function telegram(
       }
     );
 
-
   const data =
     await response.json();
-
 
   if (
     !response.ok ||
     !data.ok
   ) {
-
     throw new Error(
       data.description ||
       `Telegram ${method} error`
     );
   }
-
 
   return data.result;
 }
@@ -623,14 +518,12 @@ async function telegram(
 ========================================================= */
 
 async function creatorsToken(env) {
-
   if (
     !env.AMAZON_CREATORS_CLIENT_ID ||
     !env.AMAZON_CREATORS_CLIENT_SECRET
   ) {
     return "";
   }
-
 
   if (
     amazonTokenCache.token &&
@@ -640,12 +533,10 @@ async function creatorsToken(env) {
     return amazonTokenCache.token;
   }
 
-
   const response =
     await fetch(
       AMAZON_TOKEN_URL,
       {
-
         method: "POST",
 
         headers: {
@@ -655,7 +546,6 @@ async function creatorsToken(env) {
 
         body:
           JSON.stringify({
-
             grant_type:
               "client_credentials",
 
@@ -671,25 +561,19 @@ async function creatorsToken(env) {
       }
     );
 
-
   if (!response.ok) {
-
     const errorText =
       await response.text();
-
 
     throw new Error(
       `Amazon token ${response.status}: ${errorText}`
     );
   }
 
-
   const data =
     await response.json();
 
-
   amazonTokenCache = {
-
     token:
       data.access_token,
 
@@ -698,10 +582,8 @@ async function creatorsToken(env) {
       Math.max(
         60,
         (data.expires_in || 3600) - 120
-      ) *
-        1000
+      ) * 1000
   };
-
 
   return data.access_token;
 }
@@ -711,7 +593,6 @@ async function creatorsGetItem(
   env,
   asin
 ) {
-
   if (
     !asin ||
     !env.AMAZON_PARTNER_TAG
@@ -719,18 +600,14 @@ async function creatorsGetItem(
     return null;
   }
 
-
   const token =
     await creatorsToken(env);
-
 
   if (!token) {
     return null;
   }
 
-
   const payload = {
-
     itemIds:
       [asin],
 
@@ -744,39 +621,27 @@ async function creatorsGetItem(
       env.AMAZON_PARTNER_TAG,
 
     resources: [
-
       "images.primary.large",
-
       "images.primary.medium",
-
       "itemInfo.title",
 
       "offersV2.listings.availability",
-
       "offersV2.listings.condition",
-
       "offersV2.listings.dealDetails",
-
       "offersV2.listings.merchantInfo",
-
       "offersV2.listings.price",
-
       "offersV2.listings.savings",
-
       "offersV2.listings.isBuyBoxWinner"
     ]
   };
-
 
   const response =
     await fetch(
       `${AMAZON_API}/getItems`,
       {
-
         method: "POST",
 
         headers: {
-
           "Content-Type":
             "application/json",
 
@@ -792,27 +657,18 @@ async function creatorsGetItem(
       }
     );
 
-
   if (!response.ok) {
-
-    const errorText =
-      await response.text();
-
-
     console.error(
       "Creators API error:",
       response.status,
-      errorText
+      await response.text()
     );
-
 
     return null;
   }
 
-
   const data =
     await response.json();
-
 
   return (
     data?.itemsResult?.items?.[0] ||
@@ -829,16 +685,13 @@ function enrichFromAmazon(
   offer,
   item
 ) {
-
   if (!item) {
     return offer;
   }
 
-
   const listings =
     item.offersV2?.listings ||
     [];
-
 
   const listing =
     listings.find(
@@ -847,21 +700,16 @@ function enrichFromAmazon(
     ) ||
     listings[0];
 
-
   const price =
     listing?.price?.money;
-
 
   const saving =
     listing?.savings?.percentage;
 
-
   const savingBasis =
     listing?.price?.savingBasis?.money;
 
-
   const enriched = {
-
     ...offer,
 
     asin:
@@ -898,33 +746,27 @@ function enrichFromAmazon(
       ""
   };
 
-
   if (
     price?.amount != null
   ) {
-
     enriched.prezzo_scontato =
       `${Number(price.amount)
         .toFixed(2)
         .replace(".", ",")} €`;
   }
 
-
   if (
     saving != null
   ) {
-
     enriched.sconto_percentuale =
       `-${Math.round(
         Number(saving)
       )}%`;
   }
 
-
   if (
     savingBasis?.amount != null
   ) {
-
     enriched.prezzo_originale =
       `${Number(
         savingBasis.amount
@@ -932,7 +774,6 @@ function enrichFromAmazon(
         .toFixed(2)
         .replace(".", ",")} €`;
   }
-
 
   return enriched;
 }
@@ -942,13 +783,10 @@ async function enrich(
   env,
   offer
 ) {
-
   try {
-
     if (!offer.asin) {
       return offer;
     }
-
 
     const item =
       await creatorsGetItem(
@@ -956,19 +794,15 @@ async function enrich(
         offer.asin
       );
 
-
     return enrichFromAmazon(
       offer,
       item
     );
-
   } catch (error) {
-
     console.error(
       "Amazon enrichment:",
       error
     );
-
 
     return offer;
   }
@@ -983,7 +817,6 @@ async function notify(
   env,
   offer
 ) {
-
   if (
     !env.ONESIGNAL_APP_ID ||
     !env.ONESIGNAL_REST_API_KEY
@@ -991,27 +824,22 @@ async function notify(
     return;
   }
 
-
   const title =
     offer.titolo ||
     "Nuova offerta";
-
 
   const discount =
     offer.sconto_percentuale
       ? ` · ${offer.sconto_percentuale}`
       : "";
 
-
   const response =
     await fetch(
       "https://api.onesignal.com/notifications",
       {
-
         method: "POST",
 
         headers: {
-
           Authorization:
             `Key ${env.ONESIGNAL_REST_API_KEY}`,
 
@@ -1021,7 +849,6 @@ async function notify(
 
         body:
           JSON.stringify({
-
             app_id:
               env.ONESIGNAL_APP_ID,
 
@@ -1050,9 +877,7 @@ async function notify(
       }
     );
 
-
   if (!response.ok) {
-
     console.error(
       "OneSignal error:",
       response.status,
@@ -1070,191 +895,221 @@ function authorisedSetup(
   url,
   env
 ) {
-
   return (
     env.SETUP_KEY &&
-    url.searchParams.get(
-      "key"
-    ) ===
+    url.searchParams.get("key") ===
       env.SETUP_KEY
   );
 }
 
 
 /* =========================================================
-   TELEGRAM PUBLIC CHANNEL SEED
+   SEED STORICO CANALE
  *
- * IMPORTANTE:
+ * NUOVA VERSIONE:
  *
- * Qui NON utilizziamo il webhook.
+ * Non usa più:
  *
- * Questa funzione legge lo storico del canale
- * direttamente da:
+ *   split('<div class="tgme_widget_message')
  *
- * https://t.me/s/CasaRisparmio
+ * perché il markup HTML di Telegram può cambiare.
  *
- * e cerca il link Amazon anche nei pulsanti
- * inline sotto ogni post.
+ * Cerca invece ogni data-post e prende il blocco
+ * compreso tra quel post e il successivo.
+ *
+ * I link Amazon vengono cercati negli href del blocco.
 ========================================================= */
 
 async function seed(env) {
-
   const response =
     await fetch(
       `https://t.me/s/${CHANNEL_USERNAME}`,
       {
         headers: {
           "User-Agent":
-            "Mozilla/5.0"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
+
+          "Accept":
+            "text/html,application/xhtml+xml"
         }
       }
     );
 
-
   if (!response.ok) {
-
     throw new Error(
       `Telegram ${response.status}`
     );
   }
 
-
   const html =
     await response.text();
 
+  /*
+   * Troviamo TUTTI i data-post.
+   *
+   * Esempio:
+   *
+   * data-post="CasaRisparmio/123"
+   */
+  const postRegex =
+    /data-post\s*=\s*["']([^"']+)["']/gi;
 
-  const blocks =
-    html
-      .split(
-        '<div class="tgme_widget_message'
-      )
-      .slice(1)
-      .reverse();
+  const posts = [];
 
+  let match;
 
+  while (
+    (match =
+      postRegex.exec(html)) !== null
+  ) {
+    posts.push({
+      post:
+        match[1],
+
+      index:
+        match.index
+    });
+  }
+
+  /*
+   * Eliminiamo eventuali duplicati.
+   */
+  const uniquePosts = [];
+  const seenPosts = new Set();
+
+  for (const item of posts) {
+    if (
+      !item.post ||
+      seenPosts.has(item.post)
+    ) {
+      continue;
+    }
+
+    seenPosts.add(item.post);
+    uniquePosts.push(item);
+  }
+
+  /*
+   * Telegram mostra normalmente i post
+   * dal più recente al più vecchio.
+   *
+   * Quindi NON facciamo reverse.
+   */
   const offers = [];
-  const seen = new Set();
-
+  const seenIds = new Set();
 
   for (
-    const block of blocks
+    let i = 0;
+    i < uniquePosts.length;
+    i++
   ) {
+    const current =
+      uniquePosts[i];
 
-    /*
-     * ID del post.
-     */
+    const next =
+      uniquePosts[i + 1];
+
     const post =
-      block.match(
-        /data-post="([^"]+)"/i
-      )?.[1] || "";
-
+      current.post;
 
     const id =
       post
         .split("/")
         .at(-1);
 
-
     if (
       !id ||
-      seen.has(id)
+      seenIds.has(id)
     ) {
       continue;
     }
 
+    /*
+     * Prendiamo esclusivamente l'HTML
+     * appartenente a questo post.
+     */
+    const start =
+      current.index;
+
+    const end =
+      next
+        ? next.index
+        : html.length;
+
+    const block =
+      html.slice(
+        start,
+        end
+      );
 
     /*
      * =====================================================
-     * TESTO DEL POST
-     *
-     * Supportiamo più varianti HTML di Telegram.
+     * TESTO
      * =====================================================
      */
 
     let textHtml =
       block.match(
-        /<div[^>]*class="[^"]*tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/i
+        /<div[^>]*class=["'][^"']*tgme_widget_message_text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
       )?.[1] || "";
 
-
-    /*
-     * Fallback nel caso Telegram modifichi il markup.
-     */
     if (!textHtml) {
-
       textHtml =
         block.match(
-          /<div[^>]*class="[^"]*message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/i
+          /<div[^>]*class=["'][^"']*message_text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
         )?.[1] || "";
     }
-
 
     const text =
       stripHtml(
         textHtml
       );
 
-
     /*
      * =====================================================
-     * LINK AMAZON
+     * HREF
      *
-     * PRIMA:
-     * testo / href normale
+     * Questo è il punto importante.
      *
-     * POI:
-     * pulsanti inline sotto il post.
+     * I pulsanti "Acquista Ora" sono <a href="...">
+     * e il link Amazon è nell'href, non nel testo.
      * =====================================================
      */
 
-    let link =
-      amazonUrl(
-        text
-      );
-
-
-    /*
-     * Cerca TUTTI gli href presenti nel post.
-     *
-     * Questo è il punto fondamentale della correzione.
-     */
     const hrefs = [];
-
 
     const hrefRegex =
       /href\s*=\s*["']([^"']+)["']/gi;
 
-
     let hrefMatch;
-
 
     while (
       (hrefMatch =
         hrefRegex.exec(block)) !== null
     ) {
-
       const href =
         cleanUrl(
           hrefMatch[1]
         );
 
-
       if (
         href &&
         !hrefs.includes(href)
       ) {
-
         hrefs.push(href);
       }
     }
 
+    /*
+     * Prima proviamo eventuale URL nel testo.
+     */
+    let link =
+      amazonUrl(text);
 
     /*
-     * Se il link non era nel testo,
-     * cerchiamo tra tutti gli href del post.
+     * Poi cerchiamo negli href.
      */
     if (!link) {
-
       link =
         hrefs.find(
           href =>
@@ -1262,15 +1117,13 @@ async function seed(env) {
         ) || "";
     }
 
-
     /*
-     * Se ancora non c'è Amazon,
-     * questo post non è un'offerta.
+     * Se non troviamo Amazon,
+     * questo NON è un'offerta.
      */
     if (!link) {
       continue;
     }
-
 
     /*
      * =====================================================
@@ -1278,11 +1131,13 @@ async function seed(env) {
      * =====================================================
      */
 
-    const photo =
+    let photo =
       block.match(
-        /background-image:url\(['"]?([^'"\)]+)['"]?\)/i
+        /background-image\s*:\s*url\(\s*["']?([^"')]+)["']?\s*\)/i
       )?.[1] || "";
 
+    photo =
+      decode(photo);
 
     /*
      * =====================================================
@@ -1292,9 +1147,8 @@ async function seed(env) {
 
     const date =
       block.match(
-        /<time[^>]+datetime="([^"]+)"/i
+        /<time[^>]+datetime\s*=\s*["']([^"']+)["']/i
       )?.[1] || "";
-
 
     /*
      * =====================================================
@@ -1305,15 +1159,13 @@ async function seed(env) {
     const parsedPrices =
       prices(text);
 
-
     /*
      * =====================================================
-     * CREA OFFERTA
+     * OFFERTA
      * =====================================================
      */
 
     let offer = {
-
       id:
         String(id),
 
@@ -1321,7 +1173,7 @@ async function seed(env) {
         cleanTitle(text),
 
       immagine_url:
-        decode(photo),
+        photo,
 
       immagine_file_id:
         "",
@@ -1345,13 +1197,12 @@ async function seed(env) {
         parsedPrices.sconto_percentuale,
 
       data_pubblicazione:
-        date
+        date ||
+        new Date().toISOString()
     };
 
-
     /*
-     * Recupera titolo, immagine, prezzo ecc.
-     * da Amazon quando possibile.
+     * Arricchimento Amazon.
      */
     offer =
       await enrich(
@@ -1359,15 +1210,15 @@ async function seed(env) {
         offer
       );
 
-
     offers.push(
       offer
     );
 
+    seenIds.add(id);
 
-    seen.add(id);
-
-
+    /*
+     * Ci servono solo le ultime 10.
+     */
     if (
       offers.length >=
       MAX_OFFERS
@@ -1375,7 +1226,6 @@ async function seed(env) {
       break;
     }
   }
-
 
   return writeOffers(
     env,
@@ -1389,34 +1239,27 @@ async function seed(env) {
 ========================================================= */
 
 export default {
-
   async fetch(
     request,
     env
   ) {
-
     const url =
       new URL(
         request.url
       );
 
-
     const origin =
       request.headers.get(
         "Origin"
-      ) ||
-      "";
+      ) || "";
 
-
-    /* =====================================================
-       OPTIONS
-    ===================================================== */
-
+    /*
+     * OPTIONS
+     */
     if (
       request.method ===
       "OPTIONS"
     ) {
-
       return new Response(
         null,
         {
@@ -1438,7 +1281,6 @@ export default {
       request.method ===
         "POST"
     ) {
-
       if (
         !env.TELEGRAM_WEBHOOK_SECRET ||
         request.headers.get(
@@ -1446,7 +1288,6 @@ export default {
         ) !==
           env.TELEGRAM_WEBHOOK_SECRET
       ) {
-
         return new Response(
           "",
           {
@@ -1455,26 +1296,20 @@ export default {
         );
       }
 
-
       try {
-
         const update =
           await request.json();
-
 
         const message =
           update.channel_post ||
           update.edited_channel_post ||
           null;
 
-
         if (!message) {
-
           return new Response(
             "ok"
           );
         }
-
 
         if (
           message.chat?.username &&
@@ -1482,31 +1317,21 @@ export default {
             .toLowerCase() !==
             CHANNEL_USERNAME.toLowerCase()
         ) {
-
           return new Response(
             "ok"
           );
         }
-
 
         let offer =
           fromMessage(
             message
           );
 
-
-        /*
-         * Se il post non contiene
-         * un link Amazon né nel testo
-         * né nei pulsanti, ignoriamo.
-         */
         if (!offer) {
-
           return new Response(
             "ok"
           );
         }
-
 
         offer =
           await enrich(
@@ -1514,12 +1339,10 @@ export default {
             offer
           );
 
-
         const current =
           await readOffers(
             env
           );
-
 
         const old =
           (
@@ -1531,10 +1354,8 @@ export default {
               offer.id
           );
 
-
         const next =
           old
-
             ? (
                 current.offerte ||
                 []
@@ -1548,7 +1369,6 @@ export default {
                       }
                     : item
               )
-
             : [
                 offer,
                 ...(
@@ -1557,43 +1377,28 @@ export default {
                 )
               ];
 
-
         await writeOffers(
           env,
           next
         );
 
-
-        /*
-         * Notifica solamente le nuove offerte.
-         */
         if (!old) {
-
           await notify(
             env,
             offer
           );
         }
 
-
         return new Response(
           "ok"
         );
 
-
       } catch (error) {
-
         console.error(
           "Telegram webhook error:",
           error
         );
 
-
-        /*
-         * Telegram deve ricevere 200,
-         * altrimenti può ritentare
-         * l'aggiornamento.
-         */
         return new Response(
           "ok"
         );
@@ -1611,9 +1416,7 @@ export default {
       request.method ===
         "GET"
     ) {
-
       try {
-
         return json(
           await readOffers(
             env
@@ -1621,9 +1424,7 @@ export default {
           200,
           origin
         );
-
       } catch {
-
         return json(
           {
             offerte: [],
@@ -1648,18 +1449,15 @@ export default {
       request.method ===
         "GET"
     ) {
-
       const fileId =
         url.searchParams.get(
           "file_id"
         );
 
-
       if (
         !fileId ||
         !env.TELEGRAM_BOT_TOKEN
       ) {
-
         return new Response(
           "",
           {
@@ -1668,9 +1466,7 @@ export default {
         );
       }
 
-
       try {
-
         const file =
           await telegram(
             env,
@@ -1681,22 +1477,18 @@ export default {
             }
           );
 
-
         const image =
           await fetch(
             `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`
           );
 
-
         return new Response(
           image.body,
           {
-
             status:
               image.status,
 
             headers: {
-
               "Content-Type":
                 image.headers.get(
                   "Content-Type"
@@ -1709,9 +1501,7 @@ export default {
           }
         );
 
-
       } catch {
-
         return new Response(
           "",
           {
@@ -1737,14 +1527,12 @@ export default {
       request.method ===
         "GET"
     ) {
-
       if (
         !authorisedSetup(
           url,
           env
         )
       ) {
-
         return new Response(
           "",
           {
@@ -1753,26 +1541,19 @@ export default {
         );
       }
 
-
       try {
-
         /*
-         * -------------------------------------------------
-         * SETUP WEBHOOK
-         * -------------------------------------------------
+         * SETUP
          */
-
         if (
           url.pathname ===
           "/setup"
         ) {
-
           const result =
             await telegram(
               env,
               "setWebhook",
               {
-
                 url:
                   `${url.origin}/telegram`,
 
@@ -1789,7 +1570,6 @@ export default {
               }
             );
 
-
           return json(
             {
               ok: true,
@@ -1803,16 +1583,12 @@ export default {
 
 
         /*
-         * -------------------------------------------------
-         * SEED STORICO CANALE
-         * -------------------------------------------------
+         * SEED
          */
-
         if (
           url.pathname ===
           "/seed"
         ) {
-
           return json(
             await seed(
               env
@@ -1824,11 +1600,8 @@ export default {
 
 
         /*
-         * -------------------------------------------------
-         * STATUS WEBHOOK
-         * -------------------------------------------------
+         * STATUS
          */
-
         return json(
           await telegram(
             env,
@@ -1838,9 +1611,7 @@ export default {
           origin
         );
 
-
       } catch (error) {
-
         return json(
           {
             ok: false,
