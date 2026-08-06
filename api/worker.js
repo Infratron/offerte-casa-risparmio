@@ -8,6 +8,34 @@ const AMAZON_MARKETPLACE = "www.amazon.it";
 const AMAZON_API = "https://creatorsapi.amazon/catalog/v1";
 const AMAZON_TOKEN_URL = "https://api.amazon.co.uk/auth/o2/token";
 
+function offerDateValue(offer) {
+  const value = Date.parse(offer?.data_pubblicazione || "");
+  return Number.isFinite(value) ? value : 0;
+}
+
+function offerIdValue(offer) {
+  const value = Number.parseInt(String(offer?.id || ""), 10);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function sortOffersNewestFirst(offers) {
+  return [...(Array.isArray(offers) ? offers : [])].sort((a, b) => {
+    const byDate = offerDateValue(b) - offerDateValue(a);
+    return byDate || (offerIdValue(b) - offerIdValue(a));
+  });
+}
+
+function uniqueOffersNewestFirst(offers) {
+  const seen = new Set();
+  return sortOffersNewestFirst(offers).filter(offer => {
+    if (!offer?.id) return false;
+    const id = String(offer.id);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 let amazonTokenCache = {
   token: "",
   expiresAt: 0
@@ -383,8 +411,7 @@ function fromMessage(message) {
 ========================================================= */
 
 async function readOffers(env) {
-  const raw =
-    await env.OFFERS.get("latest");
+  const raw = await env.OFFERS.get("latest");
 
   if (!raw) {
     return {
@@ -395,7 +422,14 @@ async function readOffers(env) {
   }
 
   try {
-    return JSON.parse(raw);
+    const data = JSON.parse(raw);
+    const offerte = uniqueOffersNewestFirst(data.offerte).slice(0, MAX_OFFERS);
+
+    return {
+      offerte,
+      ultimo_aggiornamento: data.ultimo_aggiornamento || null,
+      conteggio: offerte.length
+    };
   } catch {
     return {
       offerte: [],
@@ -405,63 +439,18 @@ async function readOffers(env) {
   }
 }
 
-
-async function writeOffers(
-  env,
-  offers
-) {
-  const unique = [];
-  const seen = new Set();
-
-  const sorted =
-    [...offers].sort(
-      (a, b) =>
-        new Date(
-          b.data_pubblicazione || 0
-        ) -
-        new Date(
-          a.data_pubblicazione || 0
-        )
-    );
-
-  for (const offer of sorted) {
-    if (
-      !offer?.id ||
-      seen.has(offer.id)
-    ) {
-      continue;
-    }
-
-    seen.add(offer.id);
-    unique.push(offer);
-
-    if (
-      unique.length >=
-      MAX_OFFERS
-    ) {
-      break;
-    }
-  }
+async function writeOffers(env, offers) {
+  const unique = uniqueOffersNewestFirst(offers).slice(0, MAX_OFFERS);
 
   const data = {
-    offerte:
-      unique,
-
-    ultimo_aggiornamento:
-      new Date().toISOString(),
-
-    conteggio:
-      unique.length
+    offerte: unique,
+    ultimo_aggiornamento: new Date().toISOString(),
+    conteggio: unique.length
   };
 
-  await env.OFFERS.put(
-    "latest",
-    JSON.stringify(data)
-  );
-
+  await env.OFFERS.put("latest", JSON.stringify(data));
   return data;
 }
-
 
 /* =========================================================
    TELEGRAM API
@@ -921,318 +910,112 @@ function authorisedSetup(
 ========================================================= */
 
 async function seed(env) {
-  const response =
-    await fetch(
-      `https://t.me/s/${CHANNEL_USERNAME}`,
-      {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
-
-          "Accept":
-            "text/html,application/xhtml+xml"
-        }
-      }
-    );
+  const response = await fetch(`https://t.me/s/${CHANNEL_USERNAME}`, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml"
+    }
+  });
 
   if (!response.ok) {
-    throw new Error(
-      `Telegram ${response.status}`
-    );
+    throw new Error(`Telegram ${response.status}`);
   }
 
-  const html =
-    await response.text();
-
-  /*
-   * Troviamo TUTTI i data-post.
-   *
-   * Esempio:
-   *
-   * data-post="CasaRisparmio/123"
-   */
-  const postRegex =
-    /data-post\s*=\s*["']([^"']+)["']/gi;
-
+  const html = await response.text();
+  const postRegex = /data-post\s*=\s*["']([^"']+)["']/gi;
   const posts = [];
-
   let match;
 
-  while (
-    (match =
-      postRegex.exec(html)) !== null
-  ) {
-    posts.push({
-      post:
-        match[1],
-
-      index:
-        match.index
-    });
+  while ((match = postRegex.exec(html)) !== null) {
+    posts.push({ post: match[1], index: match.index });
   }
 
-  /*
-   * Eliminiamo eventuali duplicati.
-   */
   const uniquePosts = [];
   const seenPosts = new Set();
 
   for (const item of posts) {
-    if (
-      !item.post ||
-      seenPosts.has(item.post)
-    ) {
-      continue;
-    }
-
+    if (!item.post || seenPosts.has(item.post)) continue;
     seenPosts.add(item.post);
     uniquePosts.push(item);
   }
 
-  /*
-   * Telegram mostra normalmente i post
-   * dal più recente al più vecchio.
-   *
-   * Quindi NON facciamo reverse.
-   */
-  const offers = [];
-  const seenIds = new Set();
+  // Non ci affidiamo all'ordine con cui Telegram restituisce il markup:
+  // raccogliamo i candidati, poi li ordiniamo per data e, in caso di parità,
+  // per message_id. Solo dopo scegliamo i 10 più recenti.
+  const candidates = [];
 
-  for (
-    let i = 0;
-    i < uniquePosts.length;
-    i++
-  ) {
-    const current =
-      uniquePosts[i];
+  for (let i = 0; i < uniquePosts.length; i++) {
+    const current = uniquePosts[i];
+    const next = uniquePosts[i + 1];
+    const post = current.post;
+    const id = post.split("/").at(-1);
 
-    const next =
-      uniquePosts[i + 1];
+    if (!id) continue;
 
-    const post =
-      current.post;
+    const start = current.index;
+    const end = next ? next.index : html.length;
+    const block = html.slice(start, end);
 
-    const id =
-      post
-        .split("/")
-        .at(-1);
-
-    if (
-      !id ||
-      seenIds.has(id)
-    ) {
-      continue;
-    }
-
-    /*
-     * Prendiamo esclusivamente l'HTML
-     * appartenente a questo post.
-     */
-    const start =
-      current.index;
-
-    const end =
-      next
-        ? next.index
-        : html.length;
-
-    const block =
-      html.slice(
-        start,
-        end
-      );
-
-    /*
-     * =====================================================
-     * TESTO
-     * =====================================================
-     */
-
-    let textHtml =
-      block.match(
-        /<div[^>]*class=["'][^"']*tgme_widget_message_text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
-      )?.[1] || "";
+    let textHtml = block.match(
+      /<div[^>]*class=["'][^"']*tgme_widget_message_text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
+    )?.[1] || "";
 
     if (!textHtml) {
-      textHtml =
-        block.match(
-          /<div[^>]*class=["'][^"']*message_text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
-        )?.[1] || "";
+      textHtml = block.match(
+        /<div[^>]*class=["'][^"']*message_text[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
+      )?.[1] || "";
     }
 
-    const text =
-      stripHtml(
-        textHtml
-      );
-
-    /*
-     * =====================================================
-     * HREF
-     *
-     * Questo è il punto importante.
-     *
-     * I pulsanti "Acquista Ora" sono <a href="...">
-     * e il link Amazon è nell'href, non nel testo.
-     * =====================================================
-     */
+    const text = stripHtml(textHtml);
 
     const hrefs = [];
-
-    const hrefRegex =
-      /href\s*=\s*["']([^"']+)["']/gi;
-
+    const hrefRegex = /href\s*=\s*["']([^"']+)["']/gi;
     let hrefMatch;
 
-    while (
-      (hrefMatch =
-        hrefRegex.exec(block)) !== null
-    ) {
-      const href =
-        cleanUrl(
-          hrefMatch[1]
-        );
-
-      if (
-        href &&
-        !hrefs.includes(href)
-      ) {
-        hrefs.push(href);
-      }
+    while ((hrefMatch = hrefRegex.exec(block)) !== null) {
+      const href = cleanUrl(hrefMatch[1]);
+      if (href && !hrefs.includes(href)) hrefs.push(href);
     }
 
-    /*
-     * Prima proviamo eventuale URL nel testo.
-     */
-    let link =
-      amazonUrl(text);
+    let link = amazonUrl(text);
+    if (!link) link = hrefs.find(href => isAmazonUrl(href)) || "";
+    if (!link) continue;
 
-    /*
-     * Poi cerchiamo negli href.
-     */
-    if (!link) {
-      link =
-        hrefs.find(
-          href =>
-            isAmazonUrl(href)
-        ) || "";
-    }
+    let photo = block.match(
+      /background-image\s*:\s*url\(\s*["']?([^"')]+)["']?\s*\)/i
+    )?.[1] || "";
+    photo = decode(photo);
 
-    /*
-     * Se non troviamo Amazon,
-     * questo NON è un'offerta.
-     */
-    if (!link) {
-      continue;
-    }
+    const date = block.match(
+      /<time[^>]+datetime\s*=\s*["']([^"']+)["']/i
+    )?.[1] || "";
 
-    /*
-     * =====================================================
-     * IMMAGINE
-     * =====================================================
-     */
+    const parsedPrices = prices(text);
 
-    let photo =
-      block.match(
-        /background-image\s*:\s*url\(\s*["']?([^"')]+)["']?\s*\)/i
-      )?.[1] || "";
-
-    photo =
-      decode(photo);
-
-    /*
-     * =====================================================
-     * DATA
-     * =====================================================
-     */
-
-    const date =
-      block.match(
-        /<time[^>]+datetime\s*=\s*["']([^"']+)["']/i
-      )?.[1] || "";
-
-    /*
-     * =====================================================
-     * PREZZI
-     * =====================================================
-     */
-
-    const parsedPrices =
-      prices(text);
-
-    /*
-     * =====================================================
-     * OFFERTA
-     * =====================================================
-     */
-
-    let offer = {
-      id:
-        String(id),
-
-      titolo:
-        cleanTitle(text),
-
-      immagine_url:
-        photo,
-
-      immagine_file_id:
-        "",
-
-      link_affiliato:
-        link,
-
-      link_telegram_post:
-        `https://t.me/${post}`,
-
-      asin:
-        asinFromUrl(link),
-
-      prezzo_originale:
-        parsedPrices.prezzo_originale,
-
-      prezzo_scontato:
-        parsedPrices.prezzo_scontato,
-
-      sconto_percentuale:
-        parsedPrices.sconto_percentuale,
-
-      data_pubblicazione:
-        date ||
-        new Date().toISOString()
-    };
-
-    /*
-     * Arricchimento Amazon.
-     */
-    offer =
-      await enrich(
-        env,
-        offer
-      );
-
-    offers.push(
-      offer
-    );
-
-    seenIds.add(id);
-
-    /*
-     * Ci servono solo le ultime 10.
-     */
-    if (
-      offers.length >=
-      MAX_OFFERS
-    ) {
-      break;
-    }
+    candidates.push({
+      id: String(id),
+      titolo: cleanTitle(text),
+      immagine_url: photo,
+      immagine_file_id: "",
+      link_affiliato: link,
+      link_telegram_post: `https://t.me/${post}`,
+      asin: asinFromUrl(link),
+      prezzo_originale: parsedPrices.prezzo_originale,
+      prezzo_scontato: parsedPrices.prezzo_scontato,
+      sconto_percentuale: parsedPrices.sconto_percentuale,
+      data_pubblicazione: date || ""
+    });
   }
 
-  return writeOffers(
-    env,
-    offers
-  );
-}
+  const ordered = uniqueOffersNewestFirst(candidates).slice(0, MAX_OFFERS);
+  const enriched = [];
 
+  for (const candidate of ordered) {
+    enriched.push(await enrich(env, candidate));
+  }
+
+  return writeOffers(env, enriched);
+}
 
 /* =========================================================
    WORKER
@@ -1428,8 +1211,7 @@ export default {
         return json(
           {
             offerte: [],
-            ultimo_aggiornamento:
-              null,
+            ultimo_aggiornamento: null,
             conteggio: 0
           },
           200,
