@@ -62,6 +62,7 @@ body:before{
 }
 a{color:inherit}
 button{font:inherit}
+a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-offset:3px;border-radius:8px}
 .wrap{width:min(var(--max),100%);margin:auto;padding:0 22px}
 .header{height:82px;display:flex;align-items:center;justify-content:space-between;gap:18px}
 .brand{display:flex;align-items:center;text-decoration:none;min-width:0}
@@ -70,11 +71,11 @@ button{font:inherit}
 .social-mini{display:flex;gap:7px}
 .icon-btn{
   width:43px;height:43px;border-radius:50%;display:grid;place-items:center;
-  text-decoration:none;border:1px solid var(--line);background:rgba(255,255,255,.045);
+  text-decoration:none;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.075);
   transition:.2s;
 }
-.icon-btn:hover{transform:translateY(-2px);border-color:rgba(255,194,28,.55);background:rgba(255,255,255,.08)}
-.icon-btn svg{width:20px;height:20px}
+.icon-btn:hover{transform:translateY(-2px);border-color:rgba(255,194,28,.6);background:rgba(255,255,255,.13)}
+.icon-btn svg{width:19px;height:19px;fill:#fff}
 .bell{
   display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);
   border-radius:999px;padding:10px 15px;background:rgba(255,255,255,.045);
@@ -115,21 +116,23 @@ button{font:inherit}
 .deal-orbit{position:relative;width:min(430px,92%);aspect-ratio:1}
 .orbit-ring{position:absolute;inset:9%;border:1px solid rgba(73,170,255,.18);border-radius:50%;box-shadow:inset 0 0 55px rgba(22,135,255,.05)}
 .orbit-ring:after{content:"";position:absolute;inset:16%;border:1px dashed rgba(255,194,28,.13);border-radius:50%}
-.house-svg{position:absolute;left:13%;top:15%;width:74%;height:66%;filter:drop-shadow(0 18px 28px rgba(0,0,0,.32))}
-.visual-percent{
-  position:absolute;left:38%;top:30%;font-size:112px;line-height:1;font-weight:950;
-  color:var(--yellow);letter-spacing:-.09em;text-shadow:0 0 24px rgba(255,194,28,.35)
+.deal-illustration{position:absolute;left:50%;top:50%;width:82%;height:auto;transform:translate(-50%,-50%);filter:drop-shadow(0 24px 40px rgba(0,0,0,.38))}
+@media(prefers-reduced-motion:no-preference){
+  .deal-illustration{animation:deal-float 6s ease-in-out infinite}
 }
+@keyframes deal-float{0%,100%{transform:translate(-50%,-50%) translateY(0)}50%{transform:translate(-50%,-50%) translateY(-9px)}}
 .visual-pill{
-  position:absolute;right:5%;bottom:15%;display:flex;align-items:center;gap:8px;padding:10px 13px;
-  border:1px solid rgba(255,255,255,.13);background:rgba(5,19,35,.86);backdrop-filter:blur(12px);
-  border-radius:14px;font-size:11px;font-weight:850;box-shadow:0 12px 30px rgba(0,0,0,.25)
+  position:absolute;right:2%;top:8%;display:flex;align-items:center;gap:8px;padding:10px 13px;
+  border:1px solid rgba(255,255,255,.13);background:rgba(5,19,35,.88);backdrop-filter:blur(12px);
+  border-radius:14px;font-size:11px;font-weight:850;box-shadow:0 12px 30px rgba(0,0,0,.25);z-index:3
 }
 .visual-pill i{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(39,209,141,.7)}
-.visual-tag{position:absolute;left:7%;bottom:17%;width:67px;height:67px;border-radius:20px;display:grid;place-items:center;
-  background:linear-gradient(145deg,#ffc21c,#ffda58);color:#07111f;font-size:25px;font-weight:950;transform:rotate(-8deg);
-  box-shadow:0 14px 32px rgba(255,194,28,.18)}
-.visual-tag small{display:block;font-size:8px;letter-spacing:.08em}
+.visual-check{
+  position:absolute;left:2%;bottom:9%;display:flex;align-items:center;gap:7px;padding:9px 13px;
+  border:1px solid rgba(255,255,255,.13);background:rgba(5,19,35,.88);backdrop-filter:blur(12px);
+  border-radius:14px;font-size:11px;font-weight:850;color:#e7fbf1;box-shadow:0 12px 30px rgba(0,0,0,.25);z-index:3
+}
+.visual-check svg{width:15px;height:15px;color:var(--green);flex:0 0 auto}
 
 .section{
   border:1px solid var(--line);background:linear-gradient(145deg,rgba(8,27,47,.96),rgba(4,17,31,.95));
@@ -155,6 +158,7 @@ button{font:inherit}
 .deal-media{aspect-ratio:1/1;background:#fff;position:relative;display:grid;place-items:center;overflow:hidden}
 .deal-media:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.05),transparent 45%,rgba(0,0,0,.03))}
 .deal-media img{width:100%;height:100%;object-fit:contain;display:block}
+.deal-placeholder svg{width:44px;height:44px}
 .deal-badge{position:absolute;left:9px;top:9px;padding:6px 9px;background:var(--red);color:white;border-radius:999px;font-size:11px;font-weight:950;z-index:2}
 .deal-new{position:absolute;right:9px;top:9px;padding:6px 9px;background:rgba(4,17,31,.88);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:999px;font-size:10px;font-weight:950;z-index:2}
 .deal-body{padding:14px}
@@ -167,7 +171,8 @@ button{font:inherit}
 .amazon-btn{width:100%;margin-top:12px;min-height:39px;font-size:12px;border-radius:11px}
 .amazon-logo{font-weight:950;font-size:15px;letter-spacing:-.08em}
 .arrow-nav{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:space-between}
-.arrow{pointer-events:auto;width:42px;height:42px;border-radius:50%;border:1px solid var(--line2);background:#0b1d31;color:#fff;box-shadow:0 8px 25px rgba(0,0,0,.35);cursor:pointer;font-size:25px;display:grid;place-items:center}
+.arrow{pointer-events:auto;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:linear-gradient(160deg,#123863,#0b2542);color:#fff;box-shadow:0 8px 25px rgba(0,0,0,.4);cursor:pointer;font-size:25px;display:grid;place-items:center;transition:.2s}
+.arrow:hover{border-color:var(--yellow);color:var(--yellow);transform:scale(1.06)}
 .arrow:first-child{transform:translateX(-46px)}
 .arrow:last-child{transform:translateX(46px)}
 .order-note{display:flex;align-items:center;gap:8px;color:#7f8da0;font-size:10px;margin-top:8px}
@@ -237,7 +242,7 @@ button{font:inherit}
   <div class="nav">
     <button class="bell" id="notify-btn" type="button">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
-      <span>Attiva notifiche</span> 🔔
+      <span>Attiva notifiche</span>
     </button>
     <div class="social-mini">
       <a class="icon-btn" id="tg-mini" href="#" target="_blank" rel="noopener" aria-label="Telegram">
@@ -263,7 +268,7 @@ button{font:inherit}
     <h1>Le offerte giuste,<br><em>senza perdere tempo.</em></h1>
     <p>Casa, cucina, elettrodomestici e tanto altro: raccogliamo le occasioni più interessanti e te le portiamo direttamente qui.</p>
     <div class="actions">
-      <a class="btn btn-yellow" id="hero-tg" href="#" target="_blank" rel="noopener"><span>✈</span> Seguici su Telegram</a>
+      <a class="btn btn-yellow" id="hero-tg" href="#" target="_blank" rel="noopener"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21.6 4.2 18.4 19c-.24 1.04-.85 1.3-1.73.81l-4.78-3.52-2.31 2.23c-.26.26-.48.48-.99.48l.35-4.88 8.89-8.03c.39-.35-.09-.54-.6-.19L6.23 12.8 1.54 11.33c-1.02-.32-1.04-1.02.21-1.51L20.06 2.7c.87-.32 1.63.2 1.54 1.5Z"/></svg> Seguici su Telegram</a>
       <a class="btn" href="#offerte">Scopri le ultime offerte <span>›</span></a>
     </div>
   </div>
@@ -272,16 +277,33 @@ button{font:inherit}
     <div class="visual-glow"></div>
     <div class="deal-orbit">
       <div class="orbit-ring"></div>
-      <svg class="house-svg" viewBox="0 0 420 330" fill="none">
-        <path d="M68 157 210 46l142 111v123a18 18 0 0 1-18 18H86a18 18 0 0 1-18-18V157Z" fill="rgba(7,23,42,.78)" stroke="#1687ff" stroke-width="6"/>
-        <path d="M43 170 210 39l167 131" stroke="#49aaff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M173 297v-82h74v82" stroke="#1c6fae" stroke-width="6"/>
-        <path d="M111 187h64v52h-64zM245 187h64v52h-64z" stroke="#1c6fae" stroke-width="5"/>
-        <path d="M125 174v-33h29v33M266 174v-33h29v33" stroke="#1c6fae" stroke-width="5" stroke-linecap="round"/>
-        <path d="M210 74v55" stroke="#ffc21c" stroke-width="5" stroke-linecap="round"/>
+      <svg class="deal-illustration" viewBox="0 0 420 330" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Composizione grafica di una card offerta">
+        <defs>
+          <linearGradient id="cardGrad" x1="66" y1="30" x2="278" y2="296" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#0d2743"/>
+            <stop offset="1" stop-color="#071a2f"/>
+          </linearGradient>
+          <linearGradient id="imgGrad" x1="86" y1="50" x2="258" y2="168" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#1687ff" stop-opacity=".24"/>
+            <stop offset="1" stop-color="#1687ff" stop-opacity=".04"/>
+          </linearGradient>
+        </defs>
+        <rect x="152" y="50" width="188" height="228" rx="22" transform="rotate(8 246 164)" fill="rgba(11,32,55,.62)" stroke="rgba(73,170,255,.25)" stroke-width="2"/>
+        <rect x="66" y="30" width="212" height="266" rx="24" fill="url(#cardGrad)" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+        <rect x="86" y="50" width="172" height="118" rx="14" fill="url(#imgGrad)"/>
+        <circle cx="172" cy="109" r="27" fill="rgba(255,255,255,.08)"/>
+        <path d="M156 116l9-11 9 11 13-16 15 20" stroke="rgba(255,255,255,.42)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="86" y="56" width="58" height="25" rx="12.5" fill="#ff5360"/>
+        <text x="115" y="73" text-anchor="middle" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="800" fill="#ffffff">-42%</text>
+        <rect x="86" y="182" width="148" height="10" rx="5" fill="rgba(255,255,255,.5)"/>
+        <rect x="86" y="198" width="106" height="10" rx="5" fill="rgba(255,255,255,.22)"/>
+        <text x="86" y="238" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="22" font-weight="900" fill="#ffc21c">39,90&#160;€</text>
+        <text x="176" y="238" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700" fill="rgba(255,255,255,.42)">69,90&#160;€</text>
+        <line x1="174" y1="233" x2="216" y2="233" stroke="rgba(255,255,255,.42)" stroke-width="1.4"/>
+        <rect x="86" y="250" width="158" height="30" rx="15" fill="#ffc21c"/>
+        <text x="165" y="270" text-anchor="middle" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="11.5" font-weight="900" letter-spacing=".02em" fill="#07111f">VEDI OFFERTA</text>
       </svg>
-      <div class="visual-percent">%</div>
-      <div class="visual-tag"><div><small>OFFERTA</small>🛒</div></div>
+      <div class="visual-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg> Offerte verificate</div>
       <div class="visual-pill"><i></i> Nuove occasioni in arrivo</div>
     </div>
   </div>
@@ -326,7 +348,7 @@ button{font:inherit}
 <section class="section notify">
   <div class="notify-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></div>
   <div><h2>Vuoi essere il primo a scoprire le nuove offerte?</h2><p>Attiva le notifiche e ricevi un avviso quando arriva un'occasione interessante.</p></div>
-  <div><button class="btn btn-yellow" id="notify-main" type="button">♧ Attiva notifiche</button><div class="secure">✓ Gratis, sicuro e disattivabile quando vuoi</div></div>
+  <div><button class="btn btn-yellow" id="notify-main" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg> Attiva notifiche</button><div class="secure">✓ Gratis, sicuro e disattivabile quando vuoi</div></div>
 </section>
 </main>
 
@@ -398,7 +420,7 @@ button{font:inherit}
     const meta=[o.merchant,o.condition].filter(Boolean).join(" · ");
     return `<article class="deal" data-offer-id="${esc(o.id)}">
       <div class="deal-media">
-        ${img ? `<img loading="${index<4?"eager":"lazy"}" src="${esc(img)}" alt="${esc(title)}">` : `<span style="font-size:42px">🛍️</span>`}
+        ${img ? `<img loading="${index<4?"eager":"lazy"}" src="${esc(img)}" alt="${esc(title)}">` : `<span class="deal-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="#94a0ad" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 17 4.5-5 3.5 4 2.5-3 4 4"/></svg></span>`}
         ${discount ? `<span class="deal-badge">-${esc(discount)}${discount.includes("%")?"":"%"}</span>` : ""}
         ${index===0 ? `<span class="deal-new">PIÙ RECENTE</span>` : ""}
       </div>
@@ -466,4 +488,3 @@ button{font:inherit}
 </script>
 </body>
 </html>
-
