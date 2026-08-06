@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "casa-risparmio-live",
+  "name": "offerte-casa-risparmio",
   "main": "api/worker.js",
   "compatibility_date": "2026-08-06",
 
