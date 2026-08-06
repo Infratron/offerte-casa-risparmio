@@ -613,13 +613,13 @@ async function creatorsGetItem(
       "images.primary.large",
       "images.primary.medium",
       "itemInfo.title",
+      "itemInfo.byLineInfo",
 
       "offersV2.listings.availability",
       "offersV2.listings.condition",
       "offersV2.listings.dealDetails",
       "offersV2.listings.merchantInfo",
       "offersV2.listings.price",
-      "offersV2.listings.savings",
       "offersV2.listings.isBuyBoxWinner"
     ]
   };
@@ -659,10 +659,21 @@ async function creatorsGetItem(
   const data =
     await response.json();
 
-  return (
-    data?.itemsResult?.items?.[0] ||
-    null
-  );
+  if (Array.isArray(data?.errors) && data.errors.length) {
+    console.error(
+      "Creators API item errors:",
+      JSON.stringify(data.errors)
+    );
+  }
+
+  // La documentazione ufficiale Amazon usa "itemsResult" in alcune pagine
+  // e "itemResults" in un'altra: leggiamo entrambe per robustezza.
+  const items =
+    data?.itemsResult?.items ||
+    data?.itemResults?.items ||
+    [];
+
+  return items[0] || null;
 }
 
 
@@ -692,11 +703,21 @@ function enrichFromAmazon(
   const price =
     listing?.price?.money;
 
+  // BUG corretto: secondo la documentazione OffersV2, "savings" vive dentro
+  // listing.price.savings, non direttamente su listing. Con il percorso
+  // sbagliato questo valore era sempre undefined e lo sconto Amazon non
+  // veniva mai applicato.
   const saving =
-    listing?.savings?.percentage;
+    listing?.price?.savings?.percentage;
 
   const savingBasis =
     listing?.price?.savingBasis?.money;
+
+  const brand =
+    item.itemInfo?.byLineInfo?.brand?.displayValue;
+
+  const dealBadge =
+    listing?.dealDetails?.badge;
 
   const enriched = {
     ...offer,
@@ -719,6 +740,11 @@ function enrichFromAmazon(
       item.detailPageURL ||
       offer.link_affiliato,
 
+    brand:
+      brand ||
+      offer.brand ||
+      "",
+
     merchant:
       listing?.merchantInfo?.name ||
       offer.merchant ||
@@ -732,6 +758,11 @@ function enrichFromAmazon(
     availability:
       listing?.availability?.type ||
       offer.availability ||
+      "",
+
+    deal_badge:
+      dealBadge ||
+      offer.deal_badge ||
       ""
   };
 
@@ -1100,6 +1131,10 @@ export default {
             .toLowerCase() !==
             CHANNEL_USERNAME.toLowerCase()
         ) {
+          console.log(
+            "Webhook ignorato: canale non corrispondente ->",
+            message.chat.username
+          );
           return new Response(
             "ok"
           );
@@ -1111,6 +1146,14 @@ export default {
           );
 
         if (!offer) {
+          console.log(
+            "Webhook ignorato: nessun link Amazon riconosciuto nel post",
+            message.message_id,
+            "del",
+            message.date
+              ? new Date(message.date * 1000).toISOString()
+              : "(data mancante)"
+          );
           return new Response(
             "ok"
           );
@@ -1384,11 +1427,30 @@ export default {
         /*
          * STATUS
          */
-        return json(
+        const webhookInfo =
           await telegram(
             env,
             "getWebhookInfo"
-          ),
+          );
+
+        const storedOffers =
+          await readOffers(env);
+
+        return json(
+          {
+            webhook: webhookInfo,
+            kv: {
+              conteggio: storedOffers.conteggio,
+              ultimo_aggiornamento: storedOffers.ultimo_aggiornamento,
+              offerta_piu_recente: storedOffers.offerte?.[0]
+                ? {
+                    id: storedOffers.offerte[0].id,
+                    titolo: storedOffers.offerte[0].titolo,
+                    data_pubblicazione: storedOffers.offerte[0].data_pubblicazione
+                  }
+                : null
+            }
+          },
           200,
           origin
         );
@@ -1419,4 +1481,3 @@ export default {
     );
   }
 };
-
