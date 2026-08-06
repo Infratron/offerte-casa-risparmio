@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "casa-risparmio-live",
+  "main": "api/worker.js",
+  "compatibility_date": "2026-08-06",
+
+  "kv_namespaces": [
+    {
+      "binding": "OFFERS",
+      "id": "ab1d652ef6b94845af65b4bc0cf96391"
+    }
+  ],
+
+  "assets": {
+    "directory": ".",
+    "not_found_handling": "single-page-application"
+  }
+}
