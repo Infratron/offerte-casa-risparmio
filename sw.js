@@ -1,5 +1,5 @@
-const CACHE = "casa-risparmio-v5";
-const SHELL = ["./", "./index.html", "./config.js", "./manifest.json", "./favicon.svg"];
+const CACHE = "casa-risparmio-v6";
+const SHELL = ["./", "./index.html", "./style.css", "./app.js", "./config.js", "./manifest.json", "./favicon.svg"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -27,12 +27,14 @@ self.addEventListener("fetch", event => {
   // I dati live non devono mai essere serviti da una cache vecchia.
   if (url.pathname.endsWith("latest_deal.json") || url.pathname.endsWith("/offers")) return;
 
-  // Per HTML/config facciamo network-first: dopo un nuovo deploy la home
-  // non resta bloccata sulla versione precedente del service worker.
+  // Per HTML/CSS/JS del sito facciamo network-first: dopo un nuovo deploy
+  // la home non resta bloccata sulla versione precedente cache-first.
   if (url.origin === location.origin &&
       (event.request.mode === "navigate" ||
        url.pathname.endsWith("index.html") ||
-       url.pathname.endsWith("config.js"))) {
+       url.pathname.endsWith("config.js") ||
+       url.pathname.endsWith("style.css") ||
+       url.pathname.endsWith("app.js"))) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
@@ -60,4 +62,3 @@ self.addEventListener("fetch", event => {
     })
   );
 });
-
