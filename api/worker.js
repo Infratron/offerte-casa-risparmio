@@ -44,12 +44,18 @@ async function handleTelegramWebhook(request, env, origin) {
     let offer = fromMessage(message);
 
     if (!offer) {
-      console.log(
-        "Webhook ignorato: nessun link Amazon riconosciuto nel post",
-        message.message_id,
-        "del",
-        message.date ? new Date(message.date * 1000).toISOString() : "(data mancante)"
-      );
+      console.log("Webhook ignorato: nessun link Amazon riconosciuto", {
+        message_id: message.message_id,
+        data: message.date ? new Date(message.date * 1000).toISOString() : null,
+        ha_text: Boolean(message.text),
+        ha_caption: Boolean(message.caption),
+        anteprima_testo: (message.text || message.caption || "").slice(0, 120),
+        entities: (message.entities || message.caption_entities || []).map(e => e.type),
+        ha_tastiera: Boolean(message.reply_markup?.inline_keyboard?.length),
+        bottoni: (message.reply_markup?.inline_keyboard || []).flat().map(b => b.url),
+        ha_foto: Boolean(message.photo),
+        media_group_id: message.media_group_id || null
+      });
       return new Response("ok");
     }
 
@@ -63,6 +69,8 @@ async function handleTelegramWebhook(request, env, origin) {
       : [offer, ...(current.offerte || [])];
 
     await writeOffers(env, next);
+
+    console.log("Webhook OK:", old ? "aggiornata" : "scritta", "offerta id=" + offer.id, offer.titolo);
 
     if (!old) await notify(env, offer);
 
