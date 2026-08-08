@@ -43,7 +43,10 @@
       "/setup",
       "/seed",
       "/telegram",
-      "/image"
+      "/image",
+      "/product",
+      "/push/onesignal/OneSignalSDKWorker.js",
+      "/push/onesignal/OneSignalSDKUpdaterWorker.js"
     ]
   }
 }
