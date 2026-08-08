@@ -4,6 +4,10 @@
   "main": "api/worker.js",
   "compatibility_date": "2026-08-06",
 
+  "routes": [
+    { "pattern": "casarisparmio.info", "custom_domain": true }
+  ],
+
   "triggers": {
     "crons": ["*/2 * * * *"]
   },
