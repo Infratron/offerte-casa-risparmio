@@ -143,14 +143,21 @@ async function handleSetupRoutes(url, env, origin) {
       return json(await seed(env, enrich), 200, origin);
     }
 
-    // /status: stato del webhook Telegram + freschezza dei dati in KV,
-    // utile per capire se un'offerta mancante è un problema di webhook o
-    // di dati non ancora arrivati.
-    const webhookInfo = await telegram(env, "getWebhookInfo");
-    const storedOffers = await readOffers(env);
+    // /status: identità del bot + stato del webhook Telegram + freschezza
+    // dei dati in KV. Utile per capire se un'offerta mancante è un
+    // problema di webhook, di permessi del bot sul canale, o di dati non
+    // ancora arrivati.
+    const [botInfo, webhookInfo, storedOffers] = await Promise.all([
+      telegram(env, "getMe").catch(() => null),
+      telegram(env, "getWebhookInfo"),
+      readOffers(env)
+    ]);
 
     return json(
       {
+        bot: botInfo
+          ? { username: botInfo.username, id: botInfo.id, nome: botInfo.first_name }
+          : null,
         webhook: webhookInfo,
         kv: {
           conteggio: storedOffers.conteggio,
