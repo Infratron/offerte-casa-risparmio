@@ -165,6 +165,11 @@ async function handleSetupRoutes(url, env, origin) {
       return json(await seed(env, enrich), 200, origin);
     }
 
+    if (url.pathname === "/sync") {
+      const result = await syncNewOffers(env, enrich, notify);
+      return json(result, 200, origin);
+    }
+
     // /status: identità del bot + stato del webhook Telegram + freschezza
     // dei dati in KV. Utile per capire se un'offerta mancante è un
     // problema di webhook, di permessi del bot sul canale, o di dati non
@@ -238,7 +243,7 @@ export default {
       return handleImageProxy(url, env);
     }
 
-    if (["/setup", "/seed", "/status"].includes(url.pathname) && request.method === "GET") {
+    if (["/setup", "/seed", "/status", "/sync"].includes(url.pathname) && request.method === "GET") {
       return handleSetupRoutes(url, env, origin);
     }
 
