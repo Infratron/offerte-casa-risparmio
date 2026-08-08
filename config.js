@@ -1,5 +1,5 @@
 window.CASA_RISPARMIO_CONFIG = {
-  LIVE_API_BASE: "https://offerte-casa-risparmio.bluestacksappnana.workers.dev",
+  LIVE_API_BASE: "https://casarisparmio.info",
   TELEGRAM_URL: "https://t.me/CasaRisparmio",
   SOCIAL: {
     facebook: "https://www.facebook.com/CasaRisparmioOfferte/",
