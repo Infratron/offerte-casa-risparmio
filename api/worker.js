@@ -11,7 +11,7 @@
 
 import { cors, json } from "./lib/http.js";
 import { readOffers, writeOffers } from "./lib/offers.js";
-import { CHANNEL_USERNAME, fromMessage, seed, telegram } from "./lib/telegram.js";
+import { CHANNEL_USERNAME, fromMessage, seed, syncNewOffers, telegram } from "./lib/telegram.js";
 import { creatorsGetVariations, creatorsSearchSimilar, enrich } from "./lib/amazon-api.js";
 import { notify } from "./lib/onesignal.js";
 
@@ -213,5 +213,20 @@ export default {
     }
 
     return new Response("", { status: 404 });
+  },
+
+  /**
+   * Cron Trigger: rilegge periodicamente la pagina pubblica del canale e
+   * scrive solo le offerte davvero nuove. È il meccanismo che sostituisce
+   * il webhook come fonte primaria, perché il bot pubblica i post per
+   * conto proprio (dalla chat privata) e Telegram non genera un
+   * aggiornamento webhook per i messaggi che un bot invia da solo.
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      syncNewOffers(env, enrich, notify).catch(error =>
+        console.error("Cron sync error:", error)
+      )
+    );
   }
 };
