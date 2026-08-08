@@ -3,7 +3,7 @@
 
 import { cleanTitle, prices, stripHtml, decode } from "./text.js";
 import { amazonUrl, amazonUrlFromMessage, asinFromUrl, cleanUrl, isAmazonUrl } from "./amazon-url.js";
-import { MAX_OFFERS, uniqueOffersNewestFirst, writeOffers } from "./offers.js";
+import { MAX_OFFERS, readOffers, uniqueOffersNewestFirst, writeOffers } from "./offers.js";
 
 export const CHANNEL_USERNAME = "CasaRisparmio";
 
@@ -57,10 +57,11 @@ export function fromMessage(message) {
 }
 
 /**
- * Rilegge lo storico pubblico del canale (https://t.me/s/<canale>).
+ * Rilegge lo storico pubblico del canale (https://t.me/s/<canale>) e
+ * restituisce i candidati (senza arricchimento Amazon, senza scrivere su KV).
  *
- * Non usa più `split('<div class="tgme_widget_message')` perché il markup
- * HTML di Telegram può cambiare: cerca invece ogni `data-post` e prende il
+ * Non usa `split('<div class="tgme_widget_message')` perché il markup HTML
+ * di Telegram può cambiare: cerca invece ogni `data-post` e prende il
  * blocco compreso tra quel post e il successivo, poi cerca i link Amazon
  * negli href del blocco.
  *
@@ -68,7 +69,7 @@ export function fromMessage(message) {
  * i candidati, li ordina per data (e in caso di parità per message_id), e
  * solo dopo sceglie i più recenti.
  */
-export async function seed(env, enrich) {
+export async function fetchChannelCandidates(env) {
   const response = await fetch(`https://t.me/s/${CHANNEL_USERNAME}`, {
     headers: {
       "User-Agent":
@@ -161,12 +162,54 @@ export async function seed(env, enrich) {
     });
   }
 
-  const ordered = uniqueOffersNewestFirst(candidates).slice(0, MAX_OFFERS);
+  return uniqueOffersNewestFirst(candidates).slice(0, MAX_OFFERS);
+}
+
+/**
+ * Usata dalla rotta manuale /seed: rilegge tutto e ri-arricchisce ogni
+ * offerta da Amazon. Va bene per un click occasionale, non per un cron
+ * frequente (richiamerebbe Amazon per le stesse 10 offerte ad ogni giro).
+ */
+export async function seed(env, enrich) {
+  const candidates = await fetchChannelCandidates(env);
   const enriched = [];
 
-  for (const candidate of ordered) {
+  for (const candidate of candidates) {
     enriched.push(await enrich(env, candidate));
   }
 
   return writeOffers(env, enriched);
+}
+
+/**
+ * Usata dal Cron Trigger: confronta i candidati con quello che c'è già in
+ * KV e arricchisce/notifica SOLO le offerte davvero nuove. Questo è il
+ * meccanismo pensato per sostituire il webhook nel caso reale di questo
+ * canale: il bot pubblica i post per conto proprio (via chat privata), e
+ * Telegram non genera un aggiornamento webhook per i messaggi che un bot
+ * invia da solo — quindi il webhook da solo non può mai vedere questi
+ * post. Il polling periodico della pagina pubblica del canale, invece,
+ * funziona sempre, indipendentemente da chi/cosa ha pubblicato.
+ */
+export async function syncNewOffers(env, enrich, notify) {
+  const candidates = await fetchChannelCandidates(env);
+  const current = await readOffers(env);
+  const knownIds = new Set((current.offerte || []).map(o => String(o.id)));
+
+  const fresh = candidates.filter(c => !knownIds.has(String(c.id)));
+  if (!fresh.length) return { nuove: 0, conteggio: current.conteggio };
+
+  const enriched = [];
+  for (const candidate of fresh) {
+    enriched.push(await enrich(env, candidate));
+  }
+
+  const next = [...enriched, ...(current.offerte || [])];
+  const result = await writeOffers(env, next);
+
+  for (const offer of enriched) {
+    await notify(env, offer);
+  }
+
+  return { nuove: enriched.length, conteggio: result.conteggio };
 }
