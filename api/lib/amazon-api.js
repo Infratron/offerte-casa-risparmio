@@ -132,9 +132,9 @@ export function enrichFromAmazon(offer, item) {
     asin: item.asin || offer.asin,
     titolo: item.itemInfo?.title?.displayValue || offer.titolo,
     immagine_url:
+      offer.immagine_url ||
       item.images?.primary?.large?.url ||
       item.images?.primary?.medium?.url ||
-      offer.immagine_url ||
       "",
     link_affiliato: item.detailPageURL || offer.link_affiliato,
     brand: brand || offer.brand || "",
