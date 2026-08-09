@@ -25,8 +25,14 @@ export async function notify(env, offer) {
       // "Total Subscriptions" include tutte le sottoscrizioni, ma OneSignal
       // salta correttamente quelle disiscritte, quindi resta sicuro da usare.
       included_segments: ["Total Subscriptions"],
-      headings: { it: "🔥 Nuova offerta su Casa & Risparmio" },
-      contents: { it: `${title}${discount}`.slice(0, 120) },
+      headings: {
+        en: "🔥 New deal on Casa & Risparmio",
+        it: "🔥 Nuova offerta su Casa & Risparmio"
+      },
+      contents: {
+        en: `${title}${discount}`.slice(0, 120),
+        it: `${title}${discount}`.slice(0, 120)
+      },
       url: offer.link_affiliato || offer.link_telegram_post || SITE_URL,
       chrome_web_icon: `${SITE_URL}icon-192.png`,
       ...(offer.immagine_url ? { chrome_web_image: offer.immagine_url, big_picture: offer.immagine_url } : {})
