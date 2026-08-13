@@ -38,9 +38,9 @@ OneSignalDeferred.push(async function(OneSignal) {
     <img src="./logo-casa-risparmio.png" alt="Casa & Risparmio">
   </a>
   <div class="nav">
-    <button class="bell" id="notify-btn" type="button">
+    <button class="bell js-notify" id="notify-btn" type="button" aria-pressed="false">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
-      <span>Attiva notifiche</span>
+      <span class="notify-label">Attiva notifiche</span>
     </button>
     <div class="social-mini">
       <a class="icon-btn" id="tg-mini" href="#" target="_blank" rel="noopener" aria-label="Telegram">
@@ -146,13 +146,14 @@ OneSignalDeferred.push(async function(OneSignal) {
 <section class="section notify">
   <div class="notify-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></div>
   <div><h2>Vuoi essere il primo a scoprire le nuove offerte?</h2><p>Attiva le notifiche e ricevi un avviso quando arriva un'occasione interessante.</p></div>
-  <div><button class="btn btn-yellow" id="notify-main" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg> Attiva notifiche</button><div class="secure">✓ Gratis, sicuro e disattivabile quando vuoi</div></div>
+  <div><button class="btn btn-yellow js-notify" id="notify-main" type="button" aria-pressed="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg> <span class="notify-label">Attiva notifiche</span></button><div class="secure">✓ Gratis, sicuro e disattivabile quando vuoi</div></div>
 </section>
 </main>
 
 <footer class="footer">
   <img class="footer-logo" src="./logo-casa-risparmio.png" alt="Casa & Risparmio">
   <br>© 2026 Casa & Risparmio — Tutti i diritti riservati.
+  <br><a href="#" id="cookie-prefs-link" class="footer-link">Preferenze cookie</a>
 </footer>
 </div>
 
@@ -162,6 +163,50 @@ OneSignalDeferred.push(async function(OneSignal) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>
     <div id="modal-body"></div>
+  </div>
+</div>
+
+<div class="cookie-banner" id="cookie-banner" hidden>
+  <div class="cookie-banner-inner">
+    <p>Usiamo cookie tecnici necessari al funzionamento del sito e, solo con il tuo consenso, cookie per le notifiche push e per i link di affiliazione Amazon. <a href="#" id="cookie-open-prefs">Scopri di più e personalizza</a>.</p>
+    <div class="cookie-banner-actions">
+      <button type="button" class="btn" id="cookie-reject">Solo necessari</button>
+      <button type="button" class="btn btn-yellow" id="cookie-accept-all">Accetta tutti</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cookie-modal" hidden>
+  <div class="modal cookie-modal" role="dialog" aria-modal="true" aria-labelledby="cookie-modal-title">
+    <button class="modal-close" id="cookie-modal-close" aria-label="Chiudi">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <p class="modal-title" id="cookie-modal-title">Preferenze cookie</p>
+    <p class="modal-meta">Puoi scegliere quali categorie non essenziali attivare. La scelta resta salvata su questo dispositivo e puoi modificarla in qualsiasi momento dal link "Preferenze cookie" in fondo alla pagina.</p>
+
+    <div class="cookie-category">
+      <div class="cookie-category-head"><strong>Necessari</strong><span class="cookie-locked">Sempre attivi</span></div>
+      <p>Permettono il funzionamento di base del sito, come la cache locale dei contenuti e la visualizzazione delle offerte.</p>
+    </div>
+
+    <div class="cookie-category">
+      <div class="cookie-category-head"><strong>Notifiche push</strong>
+        <label class="switch"><input type="checkbox" id="cookie-toggle-push"><span></span></label>
+      </div>
+      <p>Servono a OneSignal per inviarti un avviso quando pubblichiamo una nuova offerta. L'attivazione vera e propria avviene comunque dal pulsante "Attiva notifiche".</p>
+    </div>
+
+    <div class="cookie-category">
+      <div class="cookie-category-head"><strong>Marketing e affiliazione</strong>
+        <label class="switch"><input type="checkbox" id="cookie-toggle-marketing"><span></span></label>
+      </div>
+      <p>Amazon utilizza i link di affiliazione per riconoscere gli acquisti generati dal nostro sito. Non raccogliamo dati personali su questa pagina per questo scopo.</p>
+    </div>
+
+    <div class="cookie-modal-actions">
+      <button type="button" class="btn" id="cookie-modal-reject">Rifiuta non essenziali</button>
+      <button type="button" class="btn btn-yellow" id="cookie-save-prefs">Salva preferenze</button>
+    </div>
   </div>
 </div>
 
