@@ -1,4 +1,13 @@
-const CACHE = "casa-risparmio-v6";
+// SDK OneSignal importato qui (e non in un service worker separato) per
+// evitare che due worker diversi si contendano lo stesso scope "/": se il
+// browser lascia attivo questo worker invece di quello OneSignal, i push
+// arrivano comunque ma senza handler restano senza notifica visibile, e
+// Chrome mostra il fallback generico "Questo sito si è aggiornato in
+// background". Con l'SDK unito qui dentro c'è una sola registrazione,
+// un solo scope, e il push viene sempre gestito correttamente.
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
+const CACHE = "casa-risparmio-v7";
 const SHELL = ["./", "./index.html", "./style.css", "./app.js", "./config.js", "./manifest.json", "./favicon.svg"];
 
 self.addEventListener("install", event => {
