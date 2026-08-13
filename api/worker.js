@@ -8,15 +8,245 @@
 //   lib/telegram.js      Bot API, messaggio -> offerta, seed storico canale
 //   lib/amazon-api.js    Amazon Creators API (GetItems/GetVariations/SearchItems)
 //   lib/onesignal.js     push notification
+//   lib/gemini.js         generazione articolo (Gemini API)
+//   lib/articles.js       lettura/scrittura articoli (pubblicati + bozze) su KV
 
 import { cors, json } from "./lib/http.js";
 import { readOffers, writeOffers } from "./lib/offers.js";
-import { CHANNEL_USERNAME, fromMessage, seed, syncNewOffers, telegram } from "./lib/telegram.js";
-import { creatorsGetVariations, creatorsSearchSimilar, enrich } from "./lib/amazon-api.js";
-import { notify } from "./lib/onesignal.js";
+import { CHANNEL_USERNAME, fromMessage, seed, sendMessage, syncNewOffers, telegram } from "./lib/telegram.js";
+import {
+  creatorsGetItemDetailed,
+  creatorsGetVariations,
+  creatorsSearchSimilar,
+  enrich,
+  productDataForArticle
+} from "./lib/amazon-api.js";
+import { asinFromUrl, extractAmazonLinks, resolveAmazonLink } from "./lib/amazon-url.js";
+import { notify, notifyArticle } from "./lib/onesignal.js";
+import { generateArticle } from "./lib/gemini.js";
+import { publishArticle, readArticles, savePendingDraft, takePendingDraft } from "./lib/articles.js";
 
 function authorisedSetup(url, env) {
   return env.SETUP_KEY && url.searchParams.get("key") === env.SETUP_KEY;
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * Prepara UNA bozza di articolo a partire da un singolo link Amazon e la
+ * invia in chat come anteprima con i bottoni "Pubblica"/"Scarta". Non
+ * lancia mai: ogni errore diventa un messaggio Telegram leggibile, così un
+ * link Amazon quando 5 link diversi in un solo messaggio, gli altri 4
+ * continuano ad essere processati anche se uno fallisce.
+ */
+async function draftArticleFromLink(env, chatId, link) {
+  try {
+    let asin = asinFromUrl(link);
+    let resolved = link;
+
+    if (!asin) {
+      resolved = await resolveAmazonLink(link);
+      asin = asinFromUrl(resolved);
+    }
+
+    if (!asin) {
+      await sendMessage(env, chatId, `⚠️ Non trovo l'ASIN in questo link:\n${link}`);
+      return;
+    }
+
+    const item = await creatorsGetItemDetailed(env, asin);
+    if (!item) {
+      await sendMessage(
+        env,
+        chatId,
+        `⚠️ Amazon Creators API non ha restituito dati per <code>${asin}</code>. Controlla le credenziali Amazon nel Worker o riprova tra poco.`
+      );
+      return;
+    }
+
+    const product = productDataForArticle(item, { asin, link_affiliato: resolved });
+    const draft = await generateArticle(env, product);
+
+    const id = crypto.randomUUID().slice(0, 8);
+    const record = {
+      id,
+      asin,
+      titolo: draft.titolo,
+      estratto: draft.estratto,
+      corpo_html: draft.corpo_html,
+      immagine_url: product.immagine_url || "",
+      link_affiliato: product.link_affiliato || resolved
+    };
+
+    await savePendingDraft(env, record);
+
+    const preview =
+      `<b>${escapeHtml(record.titolo)}</b>\n\n${escapeHtml(record.estratto)}\n\n` +
+      `<i>Bozza pronta (${record.corpo_html.replace(/<[^>]+>/g, "").length} caratteri nel corpo). Approva per pubblicarla sul sito.</i>`;
+
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          { text: "✅ Pubblica", callback_data: `art_pub:${id}` },
+          { text: "❌ Scarta", callback_data: `art_del:${id}` }
+        ]
+      ]
+    };
+
+    if (record.immagine_url) {
+      await telegram(env, "sendPhoto", {
+        chat_id: chatId,
+        photo: record.immagine_url,
+        caption: preview,
+        parse_mode: "HTML",
+        reply_markup: replyMarkup
+      }).catch(() =>
+        // Se l'immagine non è raggiungibile da Telegram, mandiamo comunque
+        // il testo: meglio una bozza senza foto che nessuna bozza.
+        telegram(env, "sendMessage", {
+          chat_id: chatId,
+          text: preview,
+          parse_mode: "HTML",
+          reply_markup: replyMarkup
+        })
+      );
+    } else {
+      await telegram(env, "sendMessage", {
+        chat_id: chatId,
+        text: preview,
+        parse_mode: "HTML",
+        reply_markup: replyMarkup
+      });
+    }
+  } catch (error) {
+    console.error("Bozza articolo error:", error);
+    await sendMessage(env, chatId, `⚠️ Errore nella generazione dell'articolo per ${link}:\n${error.message}`);
+  }
+}
+
+/**
+ * Gestisce i messaggi privati inviati al bot (non i post del canale).
+ * Solo l'ID Telegram configurato in ADMIN_TELEGRAM_ID può generare
+ * articoli; chiunque altro (o l'admin stesso, prima di aver impostato la
+ * variabile) riceve semplicemente il proprio ID, comodo per la prima
+ * configurazione.
+ */
+async function handleAdminMessage(message, env) {
+  const chatId = message.chat.id;
+  const adminId = env.ADMIN_TELEGRAM_ID ? String(env.ADMIN_TELEGRAM_ID) : "";
+
+  if (!adminId || String(chatId) !== adminId) {
+    await sendMessage(
+      env,
+      chatId,
+      `Il tuo ID Telegram è <code>${chatId}</code>.\nImpostalo come variabile <b>ADMIN_TELEGRAM_ID</b> nel Worker per poter generare articoli da qui.`
+    );
+    return;
+  }
+
+  const text = message.text || message.caption || "";
+  const links = extractAmazonLinks(text);
+
+  if (!links.length) {
+    await sendMessage(
+      env,
+      chatId,
+      "Mandami uno o più link Amazon (anche amzn.to, anche più di uno nello stesso messaggio) e ti preparo una bozza di articolo per ciascuno, da approvare o scartare."
+    );
+    return;
+  }
+
+  await sendMessage(
+    env,
+    chatId,
+    `Ricevuto${links.length > 1 ? "i" : ""} ${links.length} link. Preparo ${links.length === 1 ? "la bozza" : "le bozze"}, un attimo...`
+  );
+
+  // In sequenza (non in parallelo): sia Amazon che Gemini hanno limiti di
+  // frequenza, e con pochi link al minuto va benissimo così.
+  for (const link of links) {
+    await draftArticleFromLink(env, chatId, link);
+  }
+}
+
+/**
+ * Gestisce il tap su "Pubblica"/"Scarta" sotto l'anteprima di una bozza.
+ * takePendingDraft() legge E rimuove la bozza in un solo passaggio, quindi
+ * un secondo tap sullo stesso messaggio trova semplicemente "bozza non
+ * trovata" invece di pubblicare/notificare due volte.
+ */
+async function handleAdminCallback(callbackQuery, env) {
+  const adminId = env.ADMIN_TELEGRAM_ID ? String(env.ADMIN_TELEGRAM_ID) : "";
+  const fromId = String(callbackQuery.from?.id || "");
+
+  if (!adminId || fromId !== adminId) {
+    await telegram(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Non autorizzato." });
+    return;
+  }
+
+  const [action, id] = String(callbackQuery.data || "").split(":");
+  const draft = await takePendingDraft(env, id);
+
+  if (!draft) {
+    await telegram(env, "answerCallbackQuery", {
+      callback_query_id: callbackQuery.id,
+      text: "Bozza non trovata (forse già gestita)."
+    });
+    return;
+  }
+
+  const chatId = callbackQuery.message?.chat?.id;
+  const messageId = callbackQuery.message?.message_id;
+
+  // editMessageCaption funziona solo se il messaggio originale aveva una
+  // foto (sendPhoto), editMessageText solo se era testo semplice
+  // (sendMessage): non sappiamo qui quale dei due sia stato usato, quindi
+  // proviamo il primo e ripieghiamo sul secondo.
+  async function closeMessage(label) {
+    if (!chatId || !messageId) return;
+    await telegram(env, "editMessageReplyMarkup", {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: { inline_keyboard: [] }
+    }).catch(() => {});
+    await telegram(env, "editMessageCaption", { chat_id: chatId, message_id: messageId, caption: label }).catch(() =>
+      telegram(env, "editMessageText", { chat_id: chatId, message_id: messageId, text: label }).catch(() => {})
+    );
+  }
+
+  if (action === "art_pub") {
+    const article = {
+      id: draft.id,
+      asin: draft.asin,
+      titolo: draft.titolo,
+      estratto: draft.estratto,
+      corpo_html: draft.corpo_html,
+      immagine_url: draft.immagine_url,
+      link_affiliato: draft.link_affiliato,
+      data_pubblicazione: new Date().toISOString()
+    };
+
+    await publishArticle(env, article);
+    await notifyArticle(env, article);
+    await telegram(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Pubblicato ✅" });
+    await closeMessage(`✅ Pubblicato: ${draft.titolo}`);
+    return;
+  }
+
+  if (action === "art_del") {
+    await telegram(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Scartato" });
+    await closeMessage(`❌ Scartato: ${draft.titolo}`);
+    return;
+  }
+
+  // Azione sconosciuta: rimettiamo la bozza dov'era, per non perderla.
+  await savePendingDraft(env, draft);
+  await telegram(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Azione non riconosciuta." });
 }
 
 async function handleTelegramWebhook(request, env, origin) {
@@ -29,6 +259,17 @@ async function handleTelegramWebhook(request, env, origin) {
 
   try {
     const update = await request.json();
+
+    if (update.callback_query) {
+      await handleAdminCallback(update.callback_query, env);
+      return new Response("ok");
+    }
+
+    if (update.message && update.message.chat?.type === "private") {
+      await handleAdminMessage(update.message, env);
+      return new Response("ok");
+    }
+
     const message = update.channel_post || update.edited_channel_post || null;
 
     if (!message) return new Response("ok");
@@ -154,7 +395,7 @@ async function handleSetupRoutes(url, env, origin) {
       const result = await telegram(env, "setWebhook", {
         url: `${url.origin}/telegram`,
         secret_token: env.TELEGRAM_WEBHOOK_SECRET,
-        allowed_updates: ["channel_post", "edited_channel_post"],
+        allowed_updates: ["channel_post", "edited_channel_post", "message", "callback_query"],
         drop_pending_updates: false
       });
 
@@ -224,6 +465,14 @@ export default {
         return json(await readOffers(env), 200, origin);
       } catch {
         return json({ offerte: [], ultimo_aggiornamento: null, conteggio: 0 }, 200, origin);
+      }
+    }
+
+    if (url.pathname === "/articles" && request.method === "GET") {
+      try {
+        return json(await readArticles(env), 200, origin);
+      } catch {
+        return json({ articoli: [], ultimo_aggiornamento: null, conteggio: 0 }, 200, origin);
       }
     }
 
