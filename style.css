@@ -180,6 +180,36 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
 .social-symbol svg{width:22px;height:22px;fill:#fff}
 .social-card strong{display:block;font-size:13px}.social-card span{font-size:10px;opacity:.82}.social-card .go{margin-left:auto;font-size:20px;opacity:.8}
 
+/* ===========================================================
+   ARTICOLI & GUIDE — card generate dall'AI, approvate su Telegram
+=========================================================== */
+.articles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.article-card{
+  background:linear-gradient(160deg,#091b30,#061221);border:1px solid rgba(255,255,255,.11);
+  border-radius:18px;overflow:hidden;box-shadow:0 12px 34px rgba(0,0,0,.24);transition:.22s
+}
+.article-card:hover{transform:translateY(-4px);border-color:rgba(255,194,28,.32)}
+.article-media{all:unset;display:block;width:100%;aspect-ratio:16/10;background:#fff;cursor:pointer}
+.article-media img{width:100%;height:100%;object-fit:cover;display:block}
+.article-body{padding:14px}
+.article-title{
+  display:block;width:100%;font-size:14px;line-height:1.3;font-weight:850;min-height:37px;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden;
+  cursor:pointer;border:0;background:none;padding:0;text-align:left;color:inherit
+}
+.article-excerpt{font-size:11.5px;color:var(--muted);line-height:1.5;margin:8px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.article-read{width:100%;margin-top:12px;min-height:39px;font-size:12px;border-radius:11px}
+.article-modal-body{font-size:13.5px;line-height:1.65;color:#dfe6ee;margin-top:6px}
+.article-modal-body p{margin:0 0 12px}
+.article-modal-body h3{font-size:14px;margin:16px 0 8px;color:#fff}
+.article-modal-body ul{margin:0 0 12px;padding-left:20px}
+.article-modal-body li{margin-bottom:5px}
+.affiliate-disclosure{font-size:10.5px;color:#7f8da0;margin-top:14px;line-height:1.5}
+
+.article-modal-main{padding-right:30px}
+.article-modal-image{width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#fff;margin-bottom:16px}
+.article-modal-image img{width:100%;height:100%;object-fit:cover;display:block}
+
 .notify{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;padding:26px}
 .notify-icon{width:70px;height:70px;border-radius:21px;display:grid;place-items:center;background:rgba(255,194,28,.1);color:var(--yellow);box-shadow:0 0 30px rgba(255,194,28,.08)}
 .notify-icon svg{width:34px;height:34px}.notify h2{margin:0;font-size:21px}.notify p{margin:4px 0 0;color:var(--muted);font-size:13px}
@@ -270,6 +300,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
   .deal{flex-basis:calc((100% - 28px)/3)}
   .hero{grid-template-columns:1fr .85fr}.hero-copy{padding-left:38px}
   .hero h1{font-size:clamp(3rem,6vw,4.4rem)}
+  .articles-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:760px){
   .wrap{padding:0 14px}.header{height:auto;min-height:74px;flex-wrap:wrap;row-gap:8px;padding:12px 0}
@@ -285,6 +316,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
   .section{padding:20px 16px}.deal{flex-basis:calc((100% - 14px)/2);min-width:0}
   .arrow:first-child{transform:translateX(-9px)}.arrow:last-child{transform:translateX(9px)}
   .reasons{grid-template-columns:1fr;gap:16px}.social-grid{grid-template-columns:1fr}
+  .articles-grid{grid-template-columns:1fr}
   .notify{grid-template-columns:auto 1fr}.notify .btn{grid-column:1/-1;width:100%}
   .modal-main{grid-template-columns:110px 1fr}
 }
@@ -294,6 +326,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--yellow);outline-off
   .hero-visual{height:260px;min-height:260px}.actions{display:grid}.actions .btn{width:100%}
   .modal-main{grid-template-columns:1fr;text-align:center;padding-right:0}
   .modal-media{width:150px;margin:0 auto}
+  .article-modal-main{padding-right:0}
   .cookie-banner-inner{flex-direction:column;align-items:stretch;text-align:center}
   .cookie-banner-actions{width:100%}.cookie-banner-actions .btn{flex:1}
 }
