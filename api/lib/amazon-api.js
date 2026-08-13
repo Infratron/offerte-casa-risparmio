@@ -162,6 +162,74 @@ export async function enrich(env, offer) {
   }
 }
 
+/**
+ * Variante di creatorsGetItem pensata per il flusso "articolo generato
+ * dall'AI": richiede in più "itemInfo.features" (i bullet point che il
+ * produttore dichiara sulla scheda Amazon), il materiale più utile perché
+ * Gemini possa scrivere un testo su "come funziona" senza inventare nulla.
+ * Tenuta separata da creatorsGetItem per non appesantire l'arricchimento
+ * delle offerte del canale, che non ne ha bisogno.
+ */
+export async function creatorsGetItemDetailed(env, asin) {
+  if (!asin) return null;
+
+  const data = await creatorsRequest(env, "getItems", {
+    itemIds: [asin],
+    itemIdType: "ASIN",
+    resources: [
+      "images.primary.large",
+      "itemInfo.title",
+      "itemInfo.byLineInfo",
+      "itemInfo.features",
+      "offersV2.listings.availability",
+      "offersV2.listings.condition",
+      "offersV2.listings.dealDetails",
+      "offersV2.listings.merchantInfo",
+      "offersV2.listings.price",
+      "offersV2.listings.isBuyBoxWinner"
+    ]
+  });
+
+  const items = data?.itemsResult?.items || data?.itemResults?.items || [];
+  return items[0] || null;
+}
+
+/**
+ * Appiattisce un item Amazon nei soli campi che servono al prompt di
+ * Gemini (vedi gemini.js). "fallback" copre i casi in cui l'API non ha
+ * restituito nulla di utile (es. credenziali assenti in sviluppo): meglio
+ * un articolo con pochi dati (asin, link) che nessun articolo.
+ */
+export function productDataForArticle(item, fallback = {}) {
+  if (!item) return { asin: fallback.asin || "", link_affiliato: fallback.link_affiliato || "", caratteristiche: [] };
+
+  const listing = pickListing(item);
+  const price = listing?.price?.money;
+  const saving = listing?.price?.savings?.percentage;
+  const savingBasis = listing?.price?.savingBasis?.money;
+
+  return {
+    asin: item.asin || fallback.asin || "",
+    titolo: item.itemInfo?.title?.displayValue || "",
+    brand: item.itemInfo?.byLineInfo?.brand?.displayValue || "",
+    immagine_url: item.images?.primary?.large?.url || "",
+    link_affiliato: item.detailPageURL || fallback.link_affiliato || "",
+    merchant: listing?.merchantInfo?.name || "",
+    condition: listing?.condition?.value || "",
+    prezzo_scontato: price?.amount != null ? money(price.amount) : "",
+    prezzo_originale: savingBasis?.amount != null ? money(savingBasis.amount) : "",
+    sconto_percentuale: saving != null ? `-${Math.round(Number(saving))}%` : "",
+    // Come per "itemsResult"/"itemResults" più sopra, la Amazon Creators API
+    // non è coerente sul nome esatto di questa chiave tra una pagina di
+    // documentazione e l'altra: proviamo entrambe le varianti plausibili.
+    caratteristiche: (
+      item.itemInfo?.features?.displayValues ||
+      item.itemInfo?.featureBullets?.displayValues ||
+      []
+    ).slice(0, 8)
+  };
+}
+
 function simplifyItem(item) {
   if (!item?.asin) return null;
 
