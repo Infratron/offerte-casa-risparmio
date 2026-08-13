@@ -81,6 +81,28 @@ async function handleTelegramWebhook(request, env, origin) {
   }
 }
 
+// Contenuto ufficiale OneSignal per un service worker self-hosted (v16).
+// Tenuto qui SOLO come ponte di compatibilità: i dispositivi che si erano
+// già iscritti quando il worker OneSignal era separato da sw.js continuano
+// a controllare periodicamente questo URL per eventuali aggiornamenti. Se
+// smettesse di rispondere (404), il browser considera il service worker
+// "rimosso" e ne annulla la registrazione, perdendo la sottoscrizione push
+// in modo silenzioso. Le nuove visite del sito, invece, registrano
+// direttamente sw.js (che importa già l'SDK OneSignal) e questo file non
+// verrà più usato per loro: nulla lo cancella da solo, va tenuto.
+const ONESIGNAL_SW_CONTENT =
+  'importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");\n';
+
+function handleOneSignalWorker() {
+  return new Response(ONESIGNAL_SW_CONTENT, {
+    headers: {
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Service-Worker-Allowed": "/",
+      "Cache-Control": "public, max-age=86400"
+    }
+  });
+}
+
 async function handleImageProxy(url, env) {
   const fileId = url.searchParams.get("file_id");
   if (!fileId || !env.TELEGRAM_BOT_TOKEN) return new Response("", { status: 404 });
@@ -207,6 +229,14 @@ export default {
 
     if (url.pathname === "/product" && request.method === "GET") {
       return handleProduct(url, env, origin);
+    }
+
+    if (
+      request.method === "GET" &&
+      (url.pathname === "/push/onesignal/OneSignalSDKWorker.js" ||
+        url.pathname === "/push/onesignal/OneSignalSDKUpdaterWorker.js")
+    ) {
+      return handleOneSignalWorker();
     }
 
     if (url.pathname === "/image" && request.method === "GET") {
