@@ -170,6 +170,87 @@
   }
 
   /* =========================================================
+     3b. ARTICOLI (bozze generate da Gemini, approvate su Telegram)
+     Stessa logica difensiva delle offerte: la sezione resta
+     nascosta (attributo "hidden" nell'HTML) finché non arriva
+     almeno un articolo pubblicato.
+  ========================================================= */
+
+  let currentArticles = [];
+
+  function articleCard(a) {
+    const img = a.immagine_url || "";
+    return `<article class="article-card">
+      <button class="article-media" data-open-article="${esc(a.id)}" aria-label="Leggi l'articolo: ${esc(a.titolo)}">
+        ${img ? `<img loading="lazy" src="${esc(img)}" alt="${esc(a.titolo)}">` : placeholderIcon}
+      </button>
+      <div class="article-body">
+        <button class="article-title" data-open-article="${esc(a.id)}">${esc(a.titolo)}</button>
+        ${a.estratto ? `<p class="article-excerpt">${esc(a.estratto)}</p>` : ""}
+        <button class="btn btn-yellow article-read" data-open-article="${esc(a.id)}">Leggi l'articolo <span>›</span></button>
+      </div>
+    </article>`;
+  }
+
+  function renderArticles(list) {
+    currentArticles = Array.isArray(list) ? list : [];
+    const section = $("articoli-section");
+    const el = $("articles");
+    if (!section || !el) return;
+
+    if (!currentArticles.length) {
+      section.hidden = true;
+      return;
+    }
+
+    section.hidden = false;
+    el.innerHTML = currentArticles.map(articleCard).join("");
+  }
+
+  async function loadArticles() {
+    if (!api) return;
+    try {
+      const r = await fetch(`${api}/articles?ts=${Date.now()}`, { cache: "no-store" });
+      if (r.ok) renderArticles((await r.json())?.articoli);
+    } catch (e) {
+      // Fallback silenzioso, come per le offerte: la home resta usabile.
+    }
+  }
+
+  function articleModalHtml(a) {
+    const img = a.immagine_url || "";
+    return `
+      <div class="article-modal-main">
+        ${img ? `<div class="article-modal-image"><img src="${esc(img)}" alt="${esc(a.titolo || "")}"></div>` : ""}
+        <p class="modal-title">${esc(a.titolo || "")}</p>
+        <div class="article-modal-body">${a.corpo_html || ""}</div>
+        <div class="affiliate-disclosure">Link di affiliazione Amazon: se acquisti da qui, Casa &amp; Risparmio può ricevere una commissione, senza costi aggiuntivi per te.</div>
+        ${a.link_affiliato ? `<a class="btn amazon-btn" style="margin-top:14px" href="${esc(a.link_affiliato)}" target="_blank" rel="noopener noreferrer nofollow sponsored"><span class="amazon-logo">a</span> Apri su Amazon <span>›</span></a>` : ""}
+      </div>`;
+  }
+
+  function openArticle(article) {
+    const overlay = $("product-modal");
+    const body = $("modal-body");
+    if (!overlay || !body) return;
+
+    lastFocused = document.activeElement;
+    body.innerHTML = articleModalHtml(article);
+    overlay.hidden = false;
+    document.body.style.overflow = "hidden";
+    $("modal-close")?.focus();
+  }
+
+  function wireArticles() {
+    $("articles")?.addEventListener("click", event => {
+      const trigger = event.target.closest("[data-open-article]");
+      if (!trigger) return;
+      const article = currentArticles.find(a => String(a.id) === trigger.dataset.openArticle);
+      if (article) openArticle(article);
+    });
+  }
+
+  /* =========================================================
      4. SCHEDA PRODOTTO (modale): varianti + correlati
   ========================================================= */
 
@@ -314,8 +395,18 @@
     });
   }
 
+  // Il toggle non si fida solo dell'evento "change" di PushSubscription per
+  // aggiornare l'interfaccia (in alcuni browser/tempistiche non scatta in
+  // modo affidabile dopo optOut/optIn, ed è per questo che il pulsante
+  // "Disattiva notifiche" a volte sembrava non fare nulla): dopo ogni
+  // azione rileggiamo subito lo stato reale e aggiorniamo l'UI a mano.
+  // "notifyBusy" evita doppi click mentre la chiamata è in corso.
+  let notifyBusy = false;
+
   function toggleNotifications() {
-    if (!window.OneSignalDeferred) return;
+    if (!window.OneSignalDeferred || notifyBusy) return;
+    notifyBusy = true;
+
     OneSignalDeferred.push(async O => {
       try {
         if (O.User.PushSubscription.optedIn) {
@@ -329,6 +420,11 @@
         }
       } catch (error) {
         console.error("OneSignal notify toggle error:", error);
+      } finally {
+        // Rilettura esplicita: non basta l'evento "change", che in alcuni
+        // browser non arriva subito (o non arriva affatto) dopo optOut().
+        setNotifyUI(O.User.PushSubscription.optedIn);
+        notifyBusy = false;
       }
     });
   }
@@ -347,7 +443,6 @@
 
     $("notify-btn")?.addEventListener("click", toggleNotifications);
     $("notify-main")?.addEventListener("click", toggleNotifications);
-    $("menu-btn")?.addEventListener("click", () => $("offerte").scrollIntoView({ behavior: "smooth" }));
   }
 
   /* =========================================================
@@ -425,11 +520,15 @@
 
   wireNav();
   wireProductModal();
+  wireArticles();
   wireCookies();
   initNotifyUI();
 
   load();
   setInterval(load, 10000);
+
+  loadArticles();
+  setInterval(loadArticles, 60000);
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
