@@ -289,12 +289,47 @@
 
   /* =========================================================
      5. NOTIFICHE PUSH (OneSignal)
+     Il bottone riflette lo stato reale della sottoscrizione
+     (optedIn) e resta sincronizzato anche se cambia altrove
+     (altra tab, cambio di permesso nel browser, ecc.) grazie
+     all'evento "change" di PushSubscription.
   ========================================================= */
 
-  async function promptNotifications() {
+  function setNotifyUI(optedIn) {
+    document.querySelectorAll(".js-notify").forEach(btn => {
+      const label = btn.querySelector(".notify-label");
+      if (label) label.textContent = optedIn ? "Disattiva notifiche" : "Attiva notifiche";
+      btn.setAttribute("aria-pressed", optedIn ? "true" : "false");
+      btn.classList.toggle("is-active", !!optedIn);
+    });
+  }
+
+  function initNotifyUI() {
+    if (!window.OneSignalDeferred) return;
+    OneSignalDeferred.push(function (OneSignal) {
+      setNotifyUI(OneSignal.User.PushSubscription.optedIn);
+      OneSignal.User.PushSubscription.addEventListener("change", event => {
+        setNotifyUI(event.current.optedIn);
+      });
+    });
+  }
+
+  function toggleNotifications() {
     if (!window.OneSignalDeferred) return;
     OneSignalDeferred.push(async O => {
-      try { await O.Slidedown.promptPush(); } catch (e) {}
+      try {
+        if (O.User.PushSubscription.optedIn) {
+          await O.User.PushSubscription.optOut();
+        } else if (O.Notifications.permission) {
+          // Permesso del browser già concesso in passato: riattiviamo
+          // subito, senza rimostrare il prompt.
+          await O.User.PushSubscription.optIn();
+        } else {
+          await O.Slidedown.promptPush();
+        }
+      } catch (error) {
+        console.error("OneSignal notify toggle error:", error);
+      }
     });
   }
 
@@ -310,13 +345,88 @@
     ["fb-mini", "fb-card"].forEach(id => { const e = $(id); if (e && social.facebook) e.href = social.facebook; });
     ["pin-mini", "pin-card"].forEach(id => { const e = $(id); if (e && social.pinterest) e.href = social.pinterest; });
 
-    $("notify-btn")?.addEventListener("click", promptNotifications);
-    $("notify-main")?.addEventListener("click", promptNotifications);
+    $("notify-btn")?.addEventListener("click", toggleNotifications);
+    $("notify-main")?.addEventListener("click", toggleNotifications);
     $("menu-btn")?.addEventListener("click", () => $("offerte").scrollIntoView({ behavior: "smooth" }));
+  }
+
+  /* =========================================================
+     7. COOKIE — banner e preferenze
+     Consenso salvato in localStorage sul dispositivo dell'utente,
+     nessun cookie/servizio di terze parti viene caricato per
+     mostrare questo banner.
+  ========================================================= */
+
+  const COOKIE_KEY = "cr_cookie_consent";
+
+  function readConsent() {
+    try {
+      const raw = localStorage.getItem(COOKIE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function saveConsent(partial) {
+    try { localStorage.setItem(COOKIE_KEY, JSON.stringify({ necessary: true, ...partial, ts: Date.now() })); }
+    catch (e) {}
+  }
+
+  function applyConsentToToggles(consent) {
+    const push = $("cookie-toggle-push");
+    const marketing = $("cookie-toggle-marketing");
+    if (push) push.checked = consent?.push !== false;
+    if (marketing) marketing.checked = consent?.marketing !== false;
+  }
+
+  function openCookiePrefs() {
+    applyConsentToToggles(readConsent() || { push: true, marketing: true });
+    $("cookie-modal")?.removeAttribute("hidden");
+  }
+
+  function closeCookiePrefs() { $("cookie-modal")?.setAttribute("hidden", ""); }
+
+  function wireCookies() {
+    if (!readConsent()) $("cookie-banner")?.removeAttribute("hidden");
+
+    $("cookie-accept-all")?.addEventListener("click", () => {
+      saveConsent({ push: true, marketing: true });
+      $("cookie-banner")?.setAttribute("hidden", "");
+    });
+
+    $("cookie-reject")?.addEventListener("click", () => {
+      saveConsent({ push: false, marketing: false });
+      $("cookie-banner")?.setAttribute("hidden", "");
+    });
+
+    ["cookie-open-prefs", "cookie-prefs-link"].forEach(id => {
+      $(id)?.addEventListener("click", event => { event.preventDefault(); openCookiePrefs(); });
+    });
+
+    $("cookie-modal-close")?.addEventListener("click", closeCookiePrefs);
+    $("cookie-modal")?.addEventListener("click", event => {
+      if (event.target.id === "cookie-modal") closeCookiePrefs();
+    });
+
+    $("cookie-modal-reject")?.addEventListener("click", () => {
+      saveConsent({ push: false, marketing: false });
+      $("cookie-banner")?.setAttribute("hidden", "");
+      closeCookiePrefs();
+    });
+
+    $("cookie-save-prefs")?.addEventListener("click", () => {
+      saveConsent({
+        push: !!$("cookie-toggle-push")?.checked,
+        marketing: !!$("cookie-toggle-marketing")?.checked
+      });
+      $("cookie-banner")?.setAttribute("hidden", "");
+      closeCookiePrefs();
+    });
   }
 
   wireNav();
   wireProductModal();
+  wireCookies();
+  initNotifyUI();
 
   load();
   setInterval(load, 10000);
