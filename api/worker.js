@@ -81,28 +81,6 @@ async function handleTelegramWebhook(request, env, origin) {
   }
 }
 
-// Contenuto ufficiale OneSignal per un service worker self-hosted (v16).
-const ONESIGNAL_SW_CONTENT =
-  'importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");\n';
-
-/**
- * Serve i file del service worker OneSignal con l'header
- * "Service-Worker-Allowed: /". Senza questo header, un service worker
- * registrato da una sottocartella (push/onesignal/) può gestire
- * l'iscrizione push solo per le pagine dentro quella sottocartella: la
- * home, che sta in "/", ne resterebbe fuori. Con l'header, la scope "/"
- * richiesta dal client è autorizzata e l'iscrizione funziona da tutto il sito.
- */
-function handleOneSignalWorker() {
-  return new Response(ONESIGNAL_SW_CONTENT, {
-    headers: {
-      "Content-Type": "application/javascript; charset=utf-8",
-      "Service-Worker-Allowed": "/",
-      "Cache-Control": "public, max-age=86400"
-    }
-  });
-}
-
 async function handleImageProxy(url, env) {
   const fileId = url.searchParams.get("file_id");
   if (!fileId || !env.TELEGRAM_BOT_TOKEN) return new Response("", { status: 404 });
@@ -229,14 +207,6 @@ export default {
 
     if (url.pathname === "/product" && request.method === "GET") {
       return handleProduct(url, env, origin);
-    }
-
-    if (
-      request.method === "GET" &&
-      (url.pathname === "/push/onesignal/OneSignalSDKWorker.js" ||
-        url.pathname === "/push/onesignal/OneSignalSDKUpdaterWorker.js")
-    ) {
-      return handleOneSignalWorker();
     }
 
     if (url.pathname === "/image" && request.method === "GET") {
