@@ -39,6 +39,7 @@
     "directory": ".",
     "run_worker_first": [
       "/offers",
+      "/articles",
       "/status",
       "/setup",
       "/seed",
