@@ -30,6 +30,23 @@ export function telegramPost(message) {
   return `https://t.me/${CHANNEL_USERNAME}/${message.message_id}`;
 }
 
+/**
+ * Scorciatoia per i messaggi di testo semplici (usata dal flusso admin in
+ * chat privata: onboarding, conferme, errori). Per i messaggi con
+ * anteprima/pulsanti (le bozze di articolo) il worker chiama comunque
+ * telegram(env, "sendPhoto"/"sendMessage", {...}) direttamente, perché la
+ * forma cambia da caso a caso.
+ */
+export function sendMessage(env, chatId, text, extra = {}) {
+  return telegram(env, "sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    ...extra
+  });
+}
+
 export function fromMessage(message) {
   const text = message.text || message.caption || "";
   const amazonLink = amazonUrlFromMessage(message);
