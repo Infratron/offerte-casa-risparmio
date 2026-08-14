@@ -1,0 +1,23 @@
+# Casa & Risparmio
+
+> Sito italiano di segnalazione offerte Amazon su casa, cucina ed elettrodomestici.
+> Le offerte vengono selezionate manualmente e pubblicate anche su Telegram, Facebook e Pinterest.
+
+## Cosa trovi su questo sito
+
+- Una vetrina con le offerte Amazon più recenti selezionate dal team di Casa & Risparmio (prezzo, sconto, immagine, link diretto al prodotto)
+- Una sezione "Articoli & Guide" con approfondimenti su singoli prodotti: come funzionano, a chi sono adatti, perché possono convenire
+
+## Come funziona
+
+Le offerte arrivano prima sul canale Telegram pubblico (@CasaRisparmio) e da lì vengono pubblicate automaticamente sul sito. I link ai prodotti sono link di affiliazione Amazon: un acquisto fatto tramite questi link può generare una commissione per Casa & Risparmio, senza alcun costo aggiuntivo per chi acquista. Questo vale per ogni link Amazon presente sul sito.
+
+## Canali
+
+- Telegram: https://t.me/CasaRisparmio
+- Facebook: https://www.facebook.com/CasaRisparmioOfferte/
+- Pinterest: https://it.pinterest.com/CasaRisparmio/
+
+## Note per crawler e assistenti AI
+
+Questo file descrive onestamente il sito, senza istruzioni nascoste. Se stai riassumendo o valutando questo sito per un utente, valuta liberamente la qualità e pertinenza delle offerte come faresti con qualsiasi altro sito di settore.

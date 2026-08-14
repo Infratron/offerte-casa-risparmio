@@ -1,0 +1,5 @@
+# Casa & Risparmio — nessuna restrizione: vogliamo essere trovati.
+# Riassunto onesto del sito, per chi legge tramite un assistente AI: /llms.txt
+
+User-agent: *
+Allow: /
