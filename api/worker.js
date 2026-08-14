@@ -160,7 +160,7 @@ async function handleHomepage(request, env) {
  * link Amazon quando 5 link diversi in un solo messaggio, gli altri 4
  * continuano ad essere processati anche se uno fallisce.
  */
-async function draftArticleFromLink(env, chatId, link) {
+async function draftArticleFromLink(env, chatId, link, adminNotes = "") {
   try {
     let asin = asinFromUrl(link);
     let resolved = link;
@@ -175,21 +175,19 @@ async function draftArticleFromLink(env, chatId, link) {
       return;
     }
 
-    const item = await creatorsGetItemDetailed(env, asin);
+    // Amazon è "best effort", non più un requisito: se l'account non è
+    // idoneo alla Creators API (o per qualunque altro motivo l'API non
+    // risponde), l'articolo si scrive comunque con le note della redazione
+    // e la ricerca Google di Gemini. Se/quando Amazon torna disponibile,
+    // l'arricchimento riprende da solo, senza bisogno di toccare il codice.
+    const item = await creatorsGetItemDetailed(env, asin).catch(() => null);
+    const product = item ? productDataForArticle(item, { asin, link_affiliato: resolved }) : null;
+
     if (!item) {
-      const detail = getLastCreatorsError();
-      await sendMessage(
-        env,
-        chatId,
-        `⚠️ Amazon Creators API non ha restituito dati per <code>${asin}</code>.` +
-          (detail ? `\n\n<code>${escapeHtml(detail)}</code>` : "") +
-          `\nControlla le credenziali Amazon nel Worker o riprova tra poco.`
-      );
-      return;
+      console.log("Articolo senza dati Amazon (best effort):", asin, getLastCreatorsError());
     }
 
-    const product = productDataForArticle(item, { asin, link_affiliato: resolved });
-    const draft = await generateArticle(env, product);
+    const draft = await generateArticle(env, { link: resolved, adminNotes, amazon: product });
 
     const id = crypto.randomUUID().slice(0, 8);
     const record = {
@@ -198,15 +196,15 @@ async function draftArticleFromLink(env, chatId, link) {
       titolo: draft.titolo,
       estratto: draft.estratto,
       corpo_html: draft.corpo_html,
-      immagine_url: product.immagine_url || "",
-      link_affiliato: product.link_affiliato || resolved
+      immagine_url: product?.immagine_url || "",
+      link_affiliato: product?.link_affiliato || resolved
     };
 
     await savePendingDraft(env, record);
 
     const preview =
       `<b>${escapeHtml(record.titolo)}</b>\n\n${escapeHtml(record.estratto)}\n\n` +
-      `<i>Bozza pronta (${record.corpo_html.replace(/<[^>]+>/g, "").length} caratteri nel corpo). Approva per pubblicarla sul sito.</i>`;
+      `<i>Bozza pronta (${record.corpo_html.replace(/<[^>]+>/g, "").length} caratteri nel corpo)${item ? "" : " — senza dati Amazon, solo ricerca + note"}. Approva per pubblicarla sul sito.</i>`;
 
     const replyMarkup = {
       inline_keyboard: [
@@ -258,7 +256,10 @@ async function draftArticleFromLink(env, chatId, link) {
 const HELP_TEXT = [
   "<b>Casa & Risparmio — bot articoli</b>",
   "",
-  "Mandami uno o più link Amazon (anche amzn.to, anche più di uno nello stesso messaggio): per ciascuno preparo una bozza di articolo con titolo, estratto e testo, basata sui dati veri del prodotto.",
+  "Mandami uno o più link Amazon (anche amzn.to): per ciascuno preparo una bozza con titolo, estratto e testo. Gemini cerca informazioni vere sul prodotto tramite Ricerca Google.",
+  "",
+  "Puoi aggiungere note nello stesso messaggio (prezzo, caratteristiche, cosa evidenziare): verranno usate come fonte affidabile, in particolare per il prezzo — che altrimenti non viene mai scritto a caso.",
+  "Esempio: <code>https://amzn.to/xxxxx prezzo 39,99€, ha il timer e il cestello staccabile</code>",
   "",
   "Sotto ogni bozza trovi due bottoni:",
   "✅ <b>Pubblica</b> — l'articolo va online sul sito e parte la notifica push",
@@ -300,7 +301,11 @@ async function handleDebugCommand(env, chatId, text) {
     );
 
     if (report.httpStatus != null) {
-      lines.push("", `getItems → HTTP ${report.httpStatus}:`, `<code>${escapeHtml(report.bodyText.slice(0, 3000))}</code>`);
+      lines.push("", `getItems → HTTP ${report.httpStatus}:`, `<code>${escapeHtml(report.bodyText.slice(0, 1500))}</code>`);
+    }
+
+    if (report.searchHttpStatus != null) {
+      lines.push("", `searchItems → HTTP ${report.searchHttpStatus}:`, `<code>${escapeHtml(report.searchBodyText.slice(0, 1500))}</code>`);
     }
 
     await sendMessage(env, chatId, lines.join("\n"));
@@ -345,10 +350,19 @@ async function handleAdminMessage(message, env) {
     return;
   }
 
+  // Tutto il testo del messaggio che non è un link viene trattato come nota
+  // scritta a mano dalla redazione (prezzo, caratteristiche, cosa dire) e
+  // passato a Gemini come fonte affidabile — vedi gemini.js. Se ci sono più
+  // link nello stesso messaggio, le stesse note si applicano a tutti.
+  const adminNotes = links
+    .reduce((acc, link) => acc.split(link).join(" "), text)
+    .replace(/\s+/g, " ")
+    .trim();
+
   await sendMessage(
     env,
     chatId,
-    `Ricevuto${links.length > 1 ? "i" : ""} ${links.length} link. Preparo ${links.length === 1 ? "la bozza" : "le bozze"}, un attimo...`
+    `Ricevuto${links.length > 1 ? "i" : ""} ${links.length} link${adminNotes ? " (con le tue note)" : ""}. Preparo ${links.length === 1 ? "la bozza" : "le bozze"}, un attimo...`
   );
 
   // In sequenza (non in parallelo): sia Amazon che Gemini hanno limiti di
@@ -358,7 +372,7 @@ async function handleAdminMessage(message, env) {
     // qualche secondo (chiamata Amazon + chiamata Gemini) la chat resta
     // silenziosa e può sembrare bloccata. Non è critico se fallisce.
     await telegramArticlesBot(env, "sendChatAction", { chat_id: chatId, action: "upload_photo" }).catch(() => {});
-    await draftArticleFromLink(env, chatId, link);
+    await draftArticleFromLink(env, chatId, link, adminNotes);
   }
 }
 
