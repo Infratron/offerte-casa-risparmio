@@ -45,6 +45,7 @@
       "/seed",
       "/sync",
       "/telegram",
+      "/telegram-articles",
       "/image",
       "/product",
       "/push/onesignal/OneSignalSDKWorker.js",
