@@ -13,6 +13,18 @@ const AMAZON_TOKEN_URL = "https://api.amazon.co.uk/auth/o2/token";
 
 let amazonTokenCache = { token: "", expiresAt: 0 };
 
+// Ultimo motivo per cui creatorsRequest() ha restituito null: token mancante,
+// risposta HTTP non ok, errori nel payload... Serve solo a dare un messaggio
+// utile nel flusso articoli (vedi draftArticleFromLink in worker.js), che
+// altrimenti mostrerebbe sempre lo stesso "non ha restituito dati" generico
+// senza dire perché. Non tocca in alcun modo il flusso offerte, che resta
+// silenzioso di proposito (enrich() deve poter fallire senza rumore).
+let lastCreatorsError = "";
+
+export function getLastCreatorsError() {
+  return lastCreatorsError;
+}
+
 async function creatorsToken(env) {
   if (!env.AMAZON_CREATORS_CLIENT_ID || !env.AMAZON_CREATORS_CLIENT_SECRET) {
     return "";
@@ -48,10 +60,29 @@ async function creatorsToken(env) {
 }
 
 async function creatorsRequest(env, operation, payload) {
-  if (!env.AMAZON_PARTNER_TAG) return null;
+  lastCreatorsError = "";
 
-  const token = await creatorsToken(env);
-  if (!token) return null;
+  if (!env.AMAZON_PARTNER_TAG) {
+    lastCreatorsError = "AMAZON_PARTNER_TAG non configurato";
+    return null;
+  }
+
+  let token;
+  try {
+    token = await creatorsToken(env);
+  } catch (error) {
+    // Prima questo errore (token OAuth) non veniva intercettato qui: saliva
+    // fino a draftArticleFromLink() con un messaggio diverso ("Errore nella
+    // generazione dell'articolo..."). Ora passa dalla stessa strada di tutti
+    // gli altri fallimenti Amazon, un solo messaggio coerente.
+    lastCreatorsError = `token: ${error.message}`;
+    return null;
+  }
+
+  if (!token) {
+    lastCreatorsError = "AMAZON_CREATORS_CLIENT_ID o AMAZON_CREATORS_CLIENT_SECRET non configurati";
+    return null;
+  }
 
   const response = await fetch(`${AMAZON_API}/${operation}`, {
     method: "POST",
@@ -68,13 +99,16 @@ async function creatorsRequest(env, operation, payload) {
   });
 
   if (!response.ok) {
-    console.error(`Creators API ${operation} error:`, response.status, await response.text());
+    const body = await response.text();
+    lastCreatorsError = `${operation} ${response.status}: ${body.slice(0, 300)}`;
+    console.error(`Creators API ${operation} error:`, response.status, body);
     return null;
   }
 
   const data = await response.json();
 
   if (Array.isArray(data?.errors) && data.errors.length) {
+    lastCreatorsError = `${operation}: ${JSON.stringify(data.errors).slice(0, 300)}`;
     console.error(`Creators API ${operation} item errors:`, JSON.stringify(data.errors));
   }
 
