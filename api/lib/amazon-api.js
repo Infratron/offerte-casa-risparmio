@@ -115,6 +115,56 @@ async function creatorsRequest(env, operation, payload) {
   return data;
 }
 
+/**
+ * Bypassa TUTTA la logica di creatorsRequest (nessun null silenzioso, nessun
+ * try/catch che nasconde l'errore): fa la telefonata ad Amazon e restituisce
+ * status HTTP + corpo grezzo così come arrivano. Pensata solo per il
+ * comando /debug del bot articoli, per vedere con i nostri occhi cosa
+ * risponde davvero Amazon invece di continuare a dedurlo da lontano.
+ */
+export async function creatorsDebugRaw(env, asin) {
+  const report = {
+    clientIdPresent: Boolean(env.AMAZON_CREATORS_CLIENT_ID),
+    clientSecretPresent: Boolean(env.AMAZON_CREATORS_CLIENT_SECRET),
+    partnerTag: env.AMAZON_PARTNER_TAG || "",
+    tokenOk: false,
+    tokenError: "",
+    httpStatus: null,
+    bodyText: ""
+  };
+
+  let token = "";
+  try {
+    token = await creatorsToken(env);
+    report.tokenOk = Boolean(token);
+  } catch (error) {
+    report.tokenError = error.message;
+    return report;
+  }
+
+  if (!token || !env.AMAZON_PARTNER_TAG) return report;
+
+  const response = await fetch(`${AMAZON_API}/getItems`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "x-marketplace": AMAZON_MARKETPLACE
+    },
+    body: JSON.stringify({
+      marketplace: AMAZON_MARKETPLACE,
+      partnerTag: env.AMAZON_PARTNER_TAG,
+      itemIds: [asin],
+      itemIdType: "ASIN",
+      resources: ["itemInfo.title"]
+    })
+  });
+
+  report.httpStatus = response.status;
+  report.bodyText = await response.text();
+  return report;
+}
+
 export async function creatorsGetItem(env, asin) {
   if (!asin) return null;
 
