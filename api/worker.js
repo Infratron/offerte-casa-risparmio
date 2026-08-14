@@ -38,6 +38,120 @@ function escapeHtml(value = "") {
 }
 
 /**
+ * "19,99 €" -> "19.99" (prezzo numerico puro, come vuole schema.org/Offer).
+ * Se il testo non contiene un numero riconoscibile, torna stringa vuota:
+ * meglio omettere il prezzo dal JSON-LD che scriverne uno sbagliato.
+ */
+function plainPrice(value = "") {
+  const match = String(value).match(/(\d+(?:[.,]\d{2})?)/);
+  return match ? match[1].replace(",", ".") : "";
+}
+
+/**
+ * Le offerte/articoli cambiano in continuo e vivono in KV, quindi — a
+ * differenza di Organization/WebSite, scritti a mano in index.html — questi
+ * due blocchi JSON-LD li generiamo qui, a partire dai dati veri correnti.
+ * Tornano un array di stringhe HTML (uno <script> per blocco, non un unico
+ * array JSON-LD) perché è la forma più compatibile con i vari parser.
+ */
+function buildJsonLdBlocks(offers, articles) {
+  const blocks = [];
+
+  if (Array.isArray(offers) && offers.length) {
+    blocks.push({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Ultime offerte Amazon — Casa & Risparmio",
+      "itemListElement": offers.slice(0, 10).map((offer, index) => {
+        const price = plainPrice(offer.prezzo_scontato);
+        const item = {
+          "@type": "Product",
+          name: offer.titolo || "Offerta Amazon",
+          url: offer.link_affiliato || "https://casarisparmio.info/"
+        };
+        if (offer.immagine_url) item.image = offer.immagine_url;
+        if (offer.brand) item.brand = { "@type": "Brand", name: offer.brand };
+        if (price) {
+          item.offers = {
+            "@type": "Offer",
+            price,
+            priceCurrency: "EUR",
+            url: offer.link_affiliato || "https://casarisparmio.info/",
+            availability: "https://schema.org/InStock"
+          };
+        }
+        return { "@type": "ListItem", position: index + 1, item };
+      })
+    });
+  }
+
+  if (Array.isArray(articles) && articles.length) {
+    blocks.push({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "Articoli & Guide — Casa & Risparmio",
+      "itemListElement": articles.slice(0, 10).map((article, index) => {
+        const item = {
+          "@type": "Article",
+          headline: article.titolo || "",
+          description: article.estratto || "",
+          publisher: { "@type": "Organization", name: "Casa & Risparmio" }
+        };
+        if (article.immagine_url) item.image = article.immagine_url;
+        if (article.data_pubblicazione) item.datePublished = article.data_pubblicazione;
+        return { "@type": "ListItem", position: index + 1, item };
+      })
+    });
+  }
+
+  // "<" -> \u003c: evita che un titolo prodotto/articolo contenente "</script"
+  // possa mai chiudere anticipatamente il tag script quando viene incollato
+  // nell'HTML. Il JSON resta comunque valido: \u003c è lo stesso carattere.
+  return blocks
+    .map(block => `<script type="application/ld+json">${JSON.stringify(block).replace(/</g, "\\u003c")}</script>`)
+    .join("\n");
+}
+
+/**
+ * Serve la home passando prima dal Worker invece che direttamente dagli
+ * asset statici, SOLO per aggiungere i due blocchi JSON-LD sopra prima di
+ * </head> — il resto della pagina (HTML, CSS, JS) resta l'asset statico
+ * intatto, così i crawler/le AI che non eseguono JavaScript vedono comunque
+ * le offerte e gli articoli veri, non solo la struttura vuota della pagina.
+ *
+ * Qualsiasi problema (KV irraggiungibile, dato imprevisto...) fa tornare
+ * l'asset originale non modificato: questa funzione non deve MAI trasformare
+ * un problema di dati in un sito rotto per un visitatore vero.
+ */
+async function handleHomepage(request, env) {
+  const assetResponse = await env.ASSETS.fetch(request);
+
+  const contentType = assetResponse.headers.get("content-type") || "";
+  if (!contentType.includes("text/html")) return assetResponse;
+
+  try {
+    const [offersData, articlesData] = await Promise.all([
+      readOffers(env).catch(() => ({ offerte: [] })),
+      readArticles(env).catch(() => ({ articoli: [] }))
+    ]);
+
+    const jsonLd = buildJsonLdBlocks(offersData.offerte, articlesData.articoli);
+    if (!jsonLd) return assetResponse;
+
+    return new HTMLRewriter()
+      .on("head", {
+        element(element) {
+          element.append(jsonLd, { html: true });
+        }
+      })
+      .transform(assetResponse);
+  } catch (error) {
+    console.error("Iniezione JSON-LD home error:", error);
+    return assetResponse;
+  }
+}
+
+/**
  * Prepara UNA bozza di articolo a partire da un singolo link Amazon e la
  * invia in chat come anteprima con i bottoni "Pubblica"/"Scarta". Non
  * lancia mai: ogni errore diventa un messaggio Telegram leggibile, così un
@@ -537,6 +651,13 @@ export default {
 
     if (url.pathname === "/telegram-articles" && request.method === "POST") {
       return handleArticlesWebhook(request, env);
+    }
+
+    // Home page: passa dal Worker solo per aggiungere i dati strutturati
+    // (offerte/articoli reali) prima di </head>. Tutto il resto arriva
+    // identico dagli asset statici — vedi handleHomepage() sopra.
+    if ((url.pathname === "/" || url.pathname === "/index.html") && request.method === "GET") {
+      return handleHomepage(request, env);
     }
 
     if (url.pathname === "/offers" && request.method === "GET") {
