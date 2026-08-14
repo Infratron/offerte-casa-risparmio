@@ -6,13 +6,34 @@
 <title>Casa & Risparmio — Le offerte giuste, senza perdere tempo.</title>
 <meta name="description" content="Le migliori offerte selezionate da Casa & Risparmio: casa, cucina, elettrodomestici e tanto altro.">
 <meta name="theme-color" content="#061326">
+<link rel="canonical" href="https://casarisparmio.info/">
 <meta property="og:title" content="Casa & Risparmio">
 <meta property="og:description" content="Le offerte giuste, senza perdere tempo.">
 <meta property="og:image" content="./logo-casa-risparmio.png">
+<meta property="og:url" content="https://casarisparmio.info/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Casa & Risparmio">
+<meta property="og:locale" content="it_IT">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="./favicon.svg">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="manifest" href="./manifest.json">
 <meta name="p:domain_verify" content="7f023b75f847eaa74c1a0fbb6f59ebab"/>
+
+<!--
+  Dati strutturati statici (Organization + WebSite): questi non cambiano
+  offerta per offerta, quindi restano scritti a mano qui invece di essere
+  generati dal Worker. Le liste di offerte/articoli, che invece cambiano di
+  continuo, vengono aggiunte qui sotto dal Worker stesso quando serve questa
+  pagina (vedi handleHomepage in api/worker.js) — così anche i crawler/le AI
+  che NON eseguono JavaScript vedono dati veri, non solo la pagina vuota.
+-->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Organization","name":"Casa & Risparmio","url":"https://casarisparmio.info/","logo":"https://casarisparmio.info/logo-casa-risparmio.png","sameAs":["https://t.me/CasaRisparmio","https://www.facebook.com/CasaRisparmioOfferte/","https://it.pinterest.com/CasaRisparmio/"]}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","name":"Casa & Risparmio","url":"https://casarisparmio.info/","inLanguage":"it-IT","description":"Le migliori offerte Amazon selezionate per casa, cucina ed elettrodomestici."}
+</script>
 
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
