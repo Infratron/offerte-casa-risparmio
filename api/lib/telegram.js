@@ -7,15 +7,21 @@ import { MAX_OFFERS, readOffers, uniqueOffersNewestFirst, writeOffers } from "./
 
 export const CHANNEL_USERNAME = "CasaRisparmio";
 
-export async function telegram(env, method, body = null) {
-  const response = await fetch(
-    `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`,
-    {
-      method: body ? "POST" : "GET",
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined
-    }
-  );
+/**
+ * Chiamata di basso livello al Bot API, parametrizzata sul token: usata sia
+ * dal bot del canale (telegram()) che dal bot dedicato agli articoli
+ * (telegramArticlesBot()), due bot Telegram DISTINTI con due token diversi.
+ * Tenerli separati evita di dover riusare lo stesso nome di variabile
+ * (TELEGRAM_BOT_TOKEN è già occupata dal bot del canale) e separa anche i
+ * permessi: il bot degli articoli parla solo in chat privata con l'admin,
+ * non ha bisogno di essere amministratore del canale.
+ */
+async function telegramCall(token, method, body = null) {
+  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: body ? "POST" : "GET",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  });
 
   const data = await response.json();
 
@@ -26,19 +32,30 @@ export async function telegram(env, method, body = null) {
   return data.result;
 }
 
+// Bot del canale (pubblica le offerte, deve essere admin di @CasaRisparmio).
+export function telegram(env, method, body = null) {
+  return telegramCall(env.TELEGRAM_BOT_TOKEN, method, body);
+}
+
+// Bot dedicato alla chat privata per gli articoli (riceve i link, manda le
+// anteprime con i bottoni Pubblica/Scarta). Non serve che sia admin di nulla.
+export function telegramArticlesBot(env, method, body = null) {
+  return telegramCall(env.ARTICLES_BOT_TOKEN, method, body);
+}
+
 export function telegramPost(message) {
   return `https://t.me/${CHANNEL_USERNAME}/${message.message_id}`;
 }
 
 /**
- * Scorciatoia per i messaggi di testo semplici (usata dal flusso admin in
- * chat privata: onboarding, conferme, errori). Per i messaggi con
- * anteprima/pulsanti (le bozze di articolo) il worker chiama comunque
- * telegram(env, "sendPhoto"/"sendMessage", {...}) direttamente, perché la
- * forma cambia da caso a caso.
+ * Scorciatoia per i messaggi di testo semplici del bot articoli (usata dal
+ * flusso admin in chat privata: onboarding, conferme, errori). Per i
+ * messaggi con anteprima/pulsanti (le bozze di articolo) il worker chiama
+ * comunque telegramArticlesBot(env, "sendPhoto"/"sendMessage", {...})
+ * direttamente, perché la forma cambia da caso a caso.
  */
 export function sendMessage(env, chatId, text, extra = {}) {
-  return telegram(env, "sendMessage", {
+  return telegramArticlesBot(env, "sendMessage", {
     chat_id: chatId,
     text,
     parse_mode: "HTML",
