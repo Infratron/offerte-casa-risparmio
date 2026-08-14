@@ -15,10 +15,12 @@ import { cors, json } from "./lib/http.js";
 import { readOffers, writeOffers } from "./lib/offers.js";
 import { CHANNEL_USERNAME, fromMessage, seed, sendMessage, syncNewOffers, telegram, telegramArticlesBot } from "./lib/telegram.js";
 import {
+  creatorsDebugRaw,
   creatorsGetItemDetailed,
   creatorsGetVariations,
   creatorsSearchSimilar,
   enrich,
+  getLastCreatorsError,
   productDataForArticle
 } from "./lib/amazon-api.js";
 import { asinFromUrl, extractAmazonLinks, resolveAmazonLink } from "./lib/amazon-url.js";
@@ -175,10 +177,13 @@ async function draftArticleFromLink(env, chatId, link) {
 
     const item = await creatorsGetItemDetailed(env, asin);
     if (!item) {
+      const detail = getLastCreatorsError();
       await sendMessage(
         env,
         chatId,
-        `⚠️ Amazon Creators API non ha restituito dati per <code>${asin}</code>. Controlla le credenziali Amazon nel Worker o riprova tra poco.`
+        `⚠️ Amazon Creators API non ha restituito dati per <code>${asin}</code>.` +
+          (detail ? `\n\n<code>${escapeHtml(detail)}</code>` : "") +
+          `\nControlla le credenziali Amazon nel Worker o riprova tra poco.`
       );
       return;
     }
@@ -260,8 +265,49 @@ const HELP_TEXT = [
   "❌ <b>Scarta</b> — la bozza viene cancellata, nessun effetto sul sito",
   "",
   "Comandi:",
-  "/start oppure /help — rivede questo messaggio"
+  "/start oppure /help — rivede questo messaggio",
+  "/debug [ASIN] — telefonata diretta ad Amazon, mostra status e risposta grezzi (per capire perché un prodotto non si trova)"
 ].join("\n");
+
+/**
+ * /debug [ASIN]: bypassa tutta la logica normale e mostra cosa risponde
+ * DAVVERO Amazon in questo momento — presenza delle credenziali, esito del
+ * token OAuth, status HTTP e corpo grezzo di getItems. Serve a diagnosticare
+ * da dentro Telegram invece di dover leggere i log di Cloudflare.
+ */
+async function handleDebugCommand(env, chatId, text) {
+  const asin = (text.replace(/^\/debug\s*/i, "").trim() || "B0B4W8FDBV").toUpperCase();
+
+  await telegramArticlesBot(env, "sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
+
+  try {
+    const report = await creatorsDebugRaw(env, asin);
+
+    const lines = [
+      `<b>Debug Amazon Creators API</b>`,
+      `ASIN di prova: <code>${escapeHtml(asin)}</code>`,
+      "",
+      `AMAZON_CREATORS_CLIENT_ID: ${report.clientIdPresent ? "presente" : "❌ MANCANTE"}`,
+      `AMAZON_CREATORS_CLIENT_SECRET: ${report.clientSecretPresent ? "presente" : "❌ MANCANTE"}`,
+      `AMAZON_PARTNER_TAG: ${report.partnerTag ? `"${escapeHtml(report.partnerTag)}"` : "❌ MANCANTE"}`,
+      ""
+    ];
+
+    lines.push(
+      report.tokenError
+        ? `Token OAuth: ❌ ERRORE -> <code>${escapeHtml(report.tokenError)}</code>`
+        : `Token OAuth: ${report.tokenOk ? "ottenuto ✅" : "❌ non ottenuto"}`
+    );
+
+    if (report.httpStatus != null) {
+      lines.push("", `getItems → HTTP ${report.httpStatus}:`, `<code>${escapeHtml(report.bodyText.slice(0, 3000))}</code>`);
+    }
+
+    await sendMessage(env, chatId, lines.join("\n"));
+  } catch (error) {
+    await sendMessage(env, chatId, `Debug fallito: <code>${escapeHtml(error.message)}</code>`);
+  }
+}
 
 async function handleAdminMessage(message, env) {
   const chatId = message.chat.id;
@@ -280,6 +326,11 @@ async function handleAdminMessage(message, env) {
 
   if (/^\/start\b/.test(text) || /^\/help\b/.test(text)) {
     await sendMessage(env, chatId, HELP_TEXT);
+    return;
+  }
+
+  if (/^\/debug\b/.test(text)) {
+    await handleDebugCommand(env, chatId, text);
     return;
   }
 
@@ -577,7 +628,8 @@ async function handleSetupRoutes(url, env, origin) {
         await telegramArticlesBot(env, "setMyCommands", {
           commands: [
             { command: "start", description: "Come funziona questo bot" },
-            { command: "help", description: "Come funziona questo bot" }
+            { command: "help", description: "Come funziona questo bot" },
+            { command: "debug", description: "Diagnostica diretta con Amazon" }
           ]
         }).catch(() => {});
       }
