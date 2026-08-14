@@ -13,7 +13,7 @@
 
 import { cors, json } from "./lib/http.js";
 import { readOffers, writeOffers } from "./lib/offers.js";
-import { CHANNEL_USERNAME, fromMessage, seed, sendMessage, syncNewOffers, telegram } from "./lib/telegram.js";
+import { CHANNEL_USERNAME, fromMessage, seed, sendMessage, syncNewOffers, telegram, telegramArticlesBot } from "./lib/telegram.js";
 import {
   creatorsGetItemDetailed,
   creatorsGetVariations,
@@ -99,7 +99,7 @@ async function draftArticleFromLink(env, chatId, link) {
     };
 
     if (record.immagine_url) {
-      await telegram(env, "sendPhoto", {
+      await telegramArticlesBot(env, "sendPhoto", {
         chat_id: chatId,
         photo: record.immagine_url,
         caption: preview,
@@ -108,7 +108,7 @@ async function draftArticleFromLink(env, chatId, link) {
       }).catch(() =>
         // Se l'immagine non è raggiungibile da Telegram, mandiamo comunque
         // il testo: meglio una bozza senza foto che nessuna bozza.
-        telegram(env, "sendMessage", {
+        telegramArticlesBot(env, "sendMessage", {
           chat_id: chatId,
           text: preview,
           parse_mode: "HTML",
@@ -116,7 +116,7 @@ async function draftArticleFromLink(env, chatId, link) {
         })
       );
     } else {
-      await telegram(env, "sendMessage", {
+      await telegramArticlesBot(env, "sendMessage", {
         chat_id: chatId,
         text: preview,
         parse_mode: "HTML",
@@ -185,7 +185,7 @@ async function handleAdminCallback(callbackQuery, env) {
   const fromId = String(callbackQuery.from?.id || "");
 
   if (!adminId || fromId !== adminId) {
-    await telegram(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Non autorizzato." });
+    await telegramArticlesBot(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Non autorizzato." });
     return;
   }
 
@@ -193,7 +193,7 @@ async function handleAdminCallback(callbackQuery, env) {
   const draft = await takePendingDraft(env, id);
 
   if (!draft) {
-    await telegram(env, "answerCallbackQuery", {
+    await telegramArticlesBot(env, "answerCallbackQuery", {
       callback_query_id: callbackQuery.id,
       text: "Bozza non trovata (forse già gestita)."
     });
@@ -209,13 +209,13 @@ async function handleAdminCallback(callbackQuery, env) {
   // proviamo il primo e ripieghiamo sul secondo.
   async function closeMessage(label) {
     if (!chatId || !messageId) return;
-    await telegram(env, "editMessageReplyMarkup", {
+    await telegramArticlesBot(env, "editMessageReplyMarkup", {
       chat_id: chatId,
       message_id: messageId,
       reply_markup: { inline_keyboard: [] }
     }).catch(() => {});
-    await telegram(env, "editMessageCaption", { chat_id: chatId, message_id: messageId, caption: label }).catch(() =>
-      telegram(env, "editMessageText", { chat_id: chatId, message_id: messageId, text: label }).catch(() => {})
+    await telegramArticlesBot(env, "editMessageCaption", { chat_id: chatId, message_id: messageId, caption: label }).catch(() =>
+      telegramArticlesBot(env, "editMessageText", { chat_id: chatId, message_id: messageId, text: label }).catch(() => {})
     );
   }
 
@@ -233,20 +233,52 @@ async function handleAdminCallback(callbackQuery, env) {
 
     await publishArticle(env, article);
     await notifyArticle(env, article);
-    await telegram(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Pubblicato ✅" });
+    await telegramArticlesBot(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Pubblicato ✅" });
     await closeMessage(`✅ Pubblicato: ${draft.titolo}`);
     return;
   }
 
   if (action === "art_del") {
-    await telegram(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Scartato" });
+    await telegramArticlesBot(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Scartato" });
     await closeMessage(`❌ Scartato: ${draft.titolo}`);
     return;
   }
 
   // Azione sconosciuta: rimettiamo la bozza dov'era, per non perderla.
   await savePendingDraft(env, draft);
-  await telegram(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Azione non riconosciuta." });
+  await telegramArticlesBot(env, "answerCallbackQuery", { callback_query_id: callbackQuery.id, text: "Azione non riconosciuta." });
+}
+
+/**
+ * Webhook del bot ARTICOLI (chat privata con l'admin): messaggi con i link
+ * da trasformare in bozze, e i tap sui bottoni Pubblica/Scarta. Endpoint e
+ * secret separati dal webhook del canale perché è un bot Telegram diverso,
+ * con un suo token (ARTICLES_BOT_TOKEN) e un suo webhook secret
+ * (ARTICLES_WEBHOOK_SECRET) — due bot Telegram non possono condividere lo
+ * stesso webhook.
+ */
+async function handleArticlesWebhook(request, env) {
+  if (
+    !env.ARTICLES_WEBHOOK_SECRET ||
+    request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.ARTICLES_WEBHOOK_SECRET
+  ) {
+    return new Response("", { status: 401 });
+  }
+
+  try {
+    const update = await request.json();
+
+    if (update.callback_query) {
+      await handleAdminCallback(update.callback_query, env);
+    } else if (update.message && update.message.chat?.type === "private") {
+      await handleAdminMessage(update.message, env);
+    }
+
+    return new Response("ok");
+  } catch (error) {
+    console.error("Articles webhook error:", error);
+    return new Response("ok");
+  }
 }
 
 async function handleTelegramWebhook(request, env, origin) {
@@ -259,16 +291,6 @@ async function handleTelegramWebhook(request, env, origin) {
 
   try {
     const update = await request.json();
-
-    if (update.callback_query) {
-      await handleAdminCallback(update.callback_query, env);
-      return new Response("ok");
-    }
-
-    if (update.message && update.message.chat?.type === "private") {
-      await handleAdminMessage(update.message, env);
-      return new Response("ok");
-    }
 
     const message = update.channel_post || update.edited_channel_post || null;
 
@@ -392,14 +414,29 @@ async function handleSetupRoutes(url, env, origin) {
 
   try {
     if (url.pathname === "/setup") {
-      const result = await telegram(env, "setWebhook", {
+      // Due bot Telegram distinti = due chiamate setWebhook distinte, una
+      // per token. Il bot ARTICOLI è opzionale: se ARTICLES_BOT_TOKEN non è
+      // ancora configurato saltiamo la sua registrazione invece di far
+      // fallire tutto /setup (così il bot del canale continua a funzionare
+      // anche prima di aver attivato la funzione articoli).
+      const channelWebhook = await telegram(env, "setWebhook", {
         url: `${url.origin}/telegram`,
         secret_token: env.TELEGRAM_WEBHOOK_SECRET,
-        allowed_updates: ["channel_post", "edited_channel_post", "message", "callback_query"],
+        allowed_updates: ["channel_post", "edited_channel_post"],
         drop_pending_updates: false
       });
 
-      return json({ ok: true, webhook: result }, 200, origin);
+      let articlesWebhook = null;
+      if (env.ARTICLES_BOT_TOKEN && env.ARTICLES_WEBHOOK_SECRET) {
+        articlesWebhook = await telegramArticlesBot(env, "setWebhook", {
+          url: `${url.origin}/telegram-articles`,
+          secret_token: env.ARTICLES_WEBHOOK_SECRET,
+          allowed_updates: ["message", "callback_query"],
+          drop_pending_updates: false
+        });
+      }
+
+      return json({ ok: true, webhook: channelWebhook, webhook_articoli: articlesWebhook }, 200, origin);
     }
 
     if (url.pathname === "/seed") {
@@ -415,10 +452,12 @@ async function handleSetupRoutes(url, env, origin) {
     // dei dati in KV. Utile per capire se un'offerta mancante è un
     // problema di webhook, di permessi del bot sul canale, o di dati non
     // ancora arrivati.
-    const [botInfo, webhookInfo, storedOffers] = await Promise.all([
+    const [botInfo, webhookInfo, storedOffers, articlesBotInfo, articlesWebhookInfo] = await Promise.all([
       telegram(env, "getMe").catch(() => null),
       telegram(env, "getWebhookInfo"),
-      readOffers(env)
+      readOffers(env),
+      env.ARTICLES_BOT_TOKEN ? telegramArticlesBot(env, "getMe").catch(() => null) : null,
+      env.ARTICLES_BOT_TOKEN ? telegramArticlesBot(env, "getWebhookInfo").catch(() => null) : null
     ]);
 
     return json(
@@ -427,6 +466,10 @@ async function handleSetupRoutes(url, env, origin) {
           ? { username: botInfo.username, id: botInfo.id, nome: botInfo.first_name }
           : null,
         webhook: webhookInfo,
+        bot_articoli: articlesBotInfo
+          ? { username: articlesBotInfo.username, id: articlesBotInfo.id, nome: articlesBotInfo.first_name }
+          : null,
+        webhook_articoli: articlesWebhookInfo,
         kv: {
           conteggio: storedOffers.conteggio,
           ultimo_aggiornamento: storedOffers.ultimo_aggiornamento,
@@ -458,6 +501,10 @@ export default {
 
     if (url.pathname === "/telegram" && request.method === "POST") {
       return handleTelegramWebhook(request, env, origin);
+    }
+
+    if (url.pathname === "/telegram-articles" && request.method === "POST") {
+      return handleArticlesWebhook(request, env);
     }
 
     if (url.pathname === "/offers" && request.method === "GET") {
