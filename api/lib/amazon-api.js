@@ -144,7 +144,7 @@ export async function creatorsDebugRaw(env, asin) {
 
   if (!token || !env.AMAZON_PARTNER_TAG) return report;
 
-  const response = await fetch(`${AMAZON_API}/getItems`, {
+  const getItemsResponse = await fetch(`${AMAZON_API}/getItems`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -160,8 +160,30 @@ export async function creatorsDebugRaw(env, asin) {
     })
   });
 
-  report.httpStatus = response.status;
-  report.bodyText = await response.text();
+  report.httpStatus = getItemsResponse.status;
+  report.bodyText = await getItemsResponse.text();
+
+  // Operazione diversa (ricerca per parola chiave invece che per ASIN
+  // preciso), stessa idea: se l'errore è identico anche qui, il blocco è
+  // sull'intero account e non su questa singola chiamata/ASIN.
+  const searchResponse = await fetch(`${AMAZON_API}/searchItems`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      "x-marketplace": AMAZON_MARKETPLACE
+    },
+    body: JSON.stringify({
+      marketplace: AMAZON_MARKETPLACE,
+      partnerTag: env.AMAZON_PARTNER_TAG,
+      keywords: "aspirapolvere",
+      resources: ["itemInfo.title"]
+    })
+  });
+
+  report.searchHttpStatus = searchResponse.status;
+  report.searchBodyText = await searchResponse.text();
+
   return report;
 }
 
