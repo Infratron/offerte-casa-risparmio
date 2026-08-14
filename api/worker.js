@@ -136,6 +136,19 @@ async function draftArticleFromLink(env, chatId, link) {
  * variabile) riceve semplicemente il proprio ID, comodo per la prima
  * configurazione.
  */
+const HELP_TEXT = [
+  "<b>Casa & Risparmio — bot articoli</b>",
+  "",
+  "Mandami uno o più link Amazon (anche amzn.to, anche più di uno nello stesso messaggio): per ciascuno preparo una bozza di articolo con titolo, estratto e testo, basata sui dati veri del prodotto.",
+  "",
+  "Sotto ogni bozza trovi due bottoni:",
+  "✅ <b>Pubblica</b> — l'articolo va online sul sito e parte la notifica push",
+  "❌ <b>Scarta</b> — la bozza viene cancellata, nessun effetto sul sito",
+  "",
+  "Comandi:",
+  "/start oppure /help — rivede questo messaggio"
+].join("\n");
+
 async function handleAdminMessage(message, env) {
   const chatId = message.chat.id;
   const adminId = env.ADMIN_TELEGRAM_ID ? String(env.ADMIN_TELEGRAM_ID) : "";
@@ -149,14 +162,20 @@ async function handleAdminMessage(message, env) {
     return;
   }
 
-  const text = message.text || message.caption || "";
+  const text = (message.text || message.caption || "").trim();
+
+  if (/^\/start\b/.test(text) || /^\/help\b/.test(text)) {
+    await sendMessage(env, chatId, HELP_TEXT);
+    return;
+  }
+
   const links = extractAmazonLinks(text);
 
   if (!links.length) {
     await sendMessage(
       env,
       chatId,
-      "Mandami uno o più link Amazon (anche amzn.to, anche più di uno nello stesso messaggio) e ti preparo una bozza di articolo per ciascuno, da approvare o scartare."
+      "Non trovo link Amazon in questo messaggio. Mandami uno o più link (anche amzn.to) oppure scrivi /help per vedere come funziono."
     );
     return;
   }
@@ -170,6 +189,10 @@ async function handleAdminMessage(message, env) {
   // In sequenza (non in parallelo): sia Amazon che Gemini hanno limiti di
   // frequenza, e con pochi link al minuto va benissimo così.
   for (const link of links) {
+    // "sta scrivendo..." mentre generiamo la bozza: senza questo, per
+    // qualche secondo (chiamata Amazon + chiamata Gemini) la chat resta
+    // silenziosa e può sembrare bloccata. Non è critico se fallisce.
+    await telegramArticlesBot(env, "sendChatAction", { chat_id: chatId, action: "upload_photo" }).catch(() => {});
     await draftArticleFromLink(env, chatId, link);
   }
 }
@@ -434,6 +457,15 @@ async function handleSetupRoutes(url, env, origin) {
           allowed_updates: ["message", "callback_query"],
           drop_pending_updates: false
         });
+
+        // Menu "/" visibile in chat: comodo, non indispensabile, per questo
+        // non blocchiamo /setup se fallisce.
+        await telegramArticlesBot(env, "setMyCommands", {
+          commands: [
+            { command: "start", description: "Come funziona questo bot" },
+            { command: "help", description: "Come funziona questo bot" }
+          ]
+        }).catch(() => {});
       }
 
       return json({ ok: true, webhook: channelWebhook, webhook_articoli: articlesWebhook }, 200, origin);
