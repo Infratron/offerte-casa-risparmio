@@ -616,6 +616,14 @@ async function handleSetupRoutes(url, env, origin) {
           ? { username: articlesBotInfo.username, id: articlesBotInfo.id, nome: articlesBotInfo.first_name }
           : null,
         webhook_articoli: articlesWebhookInfo,
+        // DEBUG TEMPORANEO — da rimuovere una volta risolto il problema del
+        // secret: non espone mai il valore, solo se la variabile arriva al
+        // Worker (presente) e quanti caratteri ha (utile per scoprire spazi
+        // o "a capo" invisibili copiati per errore nel valore).
+        debug_articles_secret: {
+          presente: Boolean(env.ARTICLES_WEBHOOK_SECRET),
+          lunghezza: env.ARTICLES_WEBHOOK_SECRET ? env.ARTICLES_WEBHOOK_SECRET.length : 0
+        },
         kv: {
           conteggio: storedOffers.conteggio,
           ultimo_aggiornamento: storedOffers.ultimo_aggiornamento,
