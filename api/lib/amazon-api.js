@@ -225,6 +225,17 @@ export async function creatorsGetItemDetailed(env, asin) {
   });
 
   const items = data?.itemsResult?.items || data?.itemResults?.items || [];
+
+  if (!items.length && data) {
+    // Richiesta andata a buon fine (200 OK, nessun errore HTTP) ma senza
+    // nessun prodotto restituito: caso diverso da quelli sopra (token/rete/
+    // permessi), quindi finora non veniva segnalato. Mostriamo le chiavi
+    // vere della risposta: se non sono "itemsResult"/"itemResults" come ci
+    // aspettiamo, è la prova che questa API usa un nome diverso per questo
+    // account/operazione, e sappiamo subito cosa correggere nel parsing.
+    lastCreatorsError = `getItems: risposta 200 OK ma senza item per ${asin}. Chiavi risposta: ${Object.keys(data).join(", ") || "(nessuna)"} — dump: ${JSON.stringify(data).slice(0, 500)}`;
+  }
+
   return items[0] || null;
 }
 
